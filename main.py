@@ -13,6 +13,7 @@ async def generar_audio(texto, archivo_salida, voz="es-ES-AlvaroNeural"):
 
     print("Hola")
     print("Hola 2")
+    print("Hola 3")
 
 def generar_subtitulos(texto, duracion_total):
     """
