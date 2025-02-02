@@ -12,9 +12,10 @@ def split_sentences(texto):
     oraciones = re.split(r'(?<=[.])\s+', texto.strip())
     return oraciones
 
-async def generate_audio_for_sentence(sentence, output_file, voz="es-ES-AlvaroNeural"):
+async def generate_audio_for_sentence(sentence, output_file, voz="es-US-AlonsoNeural"):
     """
-    Genera un audio TTS para una oración y lo guarda en output_file.
+    Opciones de voz: es-US-AlonsoNeural,
+                     en-US-ChristopherNeural
     """
     comunicador = edge_tts.Communicate(text=sentence, voice=voz)
     await comunicador.save(output_file)
@@ -55,7 +56,8 @@ No tenían respuestas para mis preguntas, y sabía por mi mamá que habían pred
 
 Así que exploré otras religiones, terminando en la de mi mejor amigo: los mormones (o llamados como la Iglesia de Jesucristo de los Santos de los Últimos Días). 
 Al principio, solo parecía un poco raro por el nuevo libro de escrituras y la casi adoración al fundador, Joseph Smith.
-Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo con una especie de poncho, como una faja ancha abierta por ambos lados, y un hombre te toca la rodilla, el vientre y la cabeza con óleo consagrado. Después, te pones las prendas del templo, un conjunto de ropa interior que prometes usar el resto de tu vida. Encima de eso, llevas túnicas plisadas, un delantal verde y algo que parece un gorro de panadero. Hay una parte en la que te paras y cantas al unísono: "Oh Señor, escucha las palabras de mi boca". Oh mierda, estoy en una secta."""
+Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo con una especie de poncho, como una faja ancha abierta por ambos lados, y un hombre te toca la rodilla, el vientre y la cabeza con óleo consagrado. Después, te pones las prendas del templo, un conjunto de ropa interior que prometes usar el resto de tu vida. 
+"""
     )
     
     # 1. Separar el texto en oraciones
