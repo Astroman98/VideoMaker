@@ -1,93 +1,114 @@
 import asyncio
-import edge_tts
 import re
+import os
 from moviepy import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip
+from moviepy import concatenate_audioclips
+import edge_tts
 
-async def generar_audio(texto, archivo_salida, voz="es-ES-AlvaroNeural"):
+def split_sentences(texto):
     """
-    Genera un archivo de audio a partir de un texto usando edge_tts.
+    Separa el texto en oraciones usando el punto final como delimitador.
     """
-    comunicador = edge_tts.Communicate(text=texto, voice=voz)
-    await comunicador.save(archivo_salida)
-    print(f"Audio guardado como: {archivo_salida}")
+    oraciones = re.split(r'(?<=[.])\s+', texto.strip())
+    return oraciones
 
+async def generate_audio_for_sentence(sentence, output_file, voz="es-ES-AlvaroNeural"):
+    """
+    Genera un audio TTS para una oración y lo guarda en output_file.
+    """
+    comunicador = edge_tts.Communicate(text=sentence, voice=voz)
+    await comunicador.save(output_file)
+    print(f"Audio guardado: {output_file}")
 
-def generar_subtitulos(texto, duracion_total):
+async def generate_all_audios(sentences):
     """
-    Divide el texto en subtítulos (usando signos de puntuación como delimitadores) y
-    asigna a cada uno una duración proporcional a su longitud.
-    
-    Retorna una lista de tuplas (inicio, fin, texto_del_subtítulo).
+    Genera audios para cada oración y devuelve una lista de rutas a los archivos generados.
     """
-    # Dividir el texto en fragmentos en cada punto, signo de exclamación o interrogación.
-    subtitulos = re.split(r'(?<=[.!?])\s+', texto)
-    subtitulos = [s.strip() for s in subtitulos if s.strip()]
+    audio_files = []
+    # Asegurarse de que la carpeta existe
+    os.makedirs("audio", exist_ok=True)
     
-    # Calcular la cantidad total de caracteres para distribuir el tiempo
-    total_chars = sum(len(s) for s in subtitulos)
-    
-    entradas = []
-    tiempo_acumulado = 0
-    for s in subtitulos:
-        # Duración proporcional (mínimo 1 segundo por fragmento)
-        dur = max((len(s) / total_chars) * duracion_total, 1.0)
-        entradas.append((tiempo_acumulado, tiempo_acumulado + dur, s))
-        tiempo_acumulado += dur
-    return entradas
+    for i, sentence in enumerate(sentences):
+        file_path = f"audio/salida_{i}.mp3"
+        await generate_audio_for_sentence(sentence, file_path)
+        audio_files.append(file_path)
+    return audio_files
 
-def agregar_subtitulos(video, lista_subtitulos):
+def generate_subtitle_entries(sentences, durations):
     """
-    Recibe un clip de video y una lista de subtítulos (con tiempos de inicio y fin)
-    y genera un nuevo clip con los textos sobrepuestos.
+    Con las duraciones exactas de cada audio, genera una lista de tuplas
+    (inicio, fin, oración) para los subtítulos.
     """
-    clips_subtitulos = []
-    for inicio, fin, texto in lista_subtitulos:
-        dur = fin - inicio
-        txt_clip = TextClip(
-            text=texto,
-            font_size=24,           # Se usa "font_size" (con guión bajo)
-            color='white',
-            font="font/arial.ttf",  # Especifica la ruta a tu archivo de fuente
-            method='caption',
-            size=(video.w - 100, None)
-        ).with_position(('center', video.h - 100)
-        ).with_start(inicio
-        ).with_duration(dur)
-        clips_subtitulos.append(txt_clip)
-    
-    # Combinar el video y los clips de subtítulos
-    return CompositeVideoClip([video, *clips_subtitulos])
+    entries = []
+    start = 0
+    for sentence, d in zip(sentences, durations):
+        entries.append((start, start + d, sentence))
+        start += d
+    return entries
 
 async def main():
-    # Texto a sintetizar y usar para los subtítulos
+    # Texto completo pegado con comillas triples
     texto = (
-        'Crecí como Testigo de Jehová y finalmente "me alejé" alrededor de los 14 años. '
-        'En ese entonces no pensaba que fuera una secta, solo creía que estaban equivocados en su forma de ver las cosas. '
-        'No tenían respuestas para mis preguntas, y sabía por mi mamá que habían predicho el fin del mundo docenas de veces, y todas habían fallado.'
+       """Crecí como Testigo de Jehová y finalmente "me alejé" alrededor de los 14 años. 
+En ese entonces no pensaba que fuera una secta, solo creía que estaban equivocados en su forma de ver las cosas. 
+No tenían respuestas para mis preguntas, y sabía por mi mamá que habían predicho el fin del mundo docenas de veces, y todas habían fallado. 
+
+Así que exploré otras religiones, terminando en la de mi mejor amigo: los mormones (o llamados como la Iglesia de Jesucristo de los Santos de los Últimos Días). 
+Al principio, solo parecía un poco raro por el nuevo libro de escrituras y la casi adoración al fundador, Joseph Smith.
+Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo con una especie de poncho, como una faja ancha abierta por ambos lados, y un hombre te toca la rodilla, el vientre y la cabeza con óleo consagrado. Después, te pones las prendas del templo, un conjunto de ropa interior que prometes usar el resto de tu vida. Encima de eso, llevas túnicas plisadas, un delantal verde y algo que parece un gorro de panadero. Hay una parte en la que te paras y cantas al unísono: "Oh Señor, escucha las palabras de mi boca". Oh mierda, estoy en una secta."""
     )
     
-    # Generar el audio TTS y guardarlo en la carpeta "audio"
-    archivo_audio = "audio/salida.mp3"
-    await generar_audio(texto, archivo_audio, voz="es-ES-AlvaroNeural")
+    # 1. Separar el texto en oraciones
+    sentences = split_sentences(texto)
+    print("Oraciones:")
+    for i, s in enumerate(sentences, 1):
+        print(f"{i}: {s}")
     
-    # Cargar el audio generado para obtener su duración
-    audio_clip = AudioFileClip(archivo_audio)
-    duracion = audio_clip.duration
+    # 2. Generar un audio para cada oración
+    audio_file_paths = await generate_all_audios(sentences)
     
-    # Cargar el video de gameplay desde la carpeta "video"
-    video_clip = VideoFileClip("video/gameplay1.mp4").subclipped(0, duracion)
+    # 3. Cargar cada audio y obtener su duración
+    audio_clips = []
+    durations = []
+    for file in audio_file_paths:
+        clip = AudioFileClip(file)
+        audio_clips.append(clip)
+        durations.append(clip.duration)
     
-    # Asignar el audio TTS al video
-    video_clip = video_clip.with_audio(audio_clip)
+    total_duration = sum(durations)
+    print(f"Duración total: {total_duration} segundos")
     
-    # Generar la lista de subtítulos a partir del texto y la duración total
-    lista_subtitulos = generar_subtitulos(texto, duracion)
+    # 4. Concatenar los audios en uno solo
+    final_audio = concatenate_audioclips(audio_clips)
     
-    # Agregar los subtítulos al video
-    video_final = agregar_subtitulos(video_clip, lista_subtitulos)
+    # 5. Cargar el video y recortarlo a la duración total del audio concatenado
+    video_clip = VideoFileClip("video/gameplay1.mp4").subclipped(0, total_duration)
+    video_clip = video_clip.with_audio(final_audio)
     
-    # Exportar el video final con audio y subtítulos
-    video_final.write_videofile(
+    # 6. Generar entradas para los subtítulos basadas en las duraciones reales
+    subtitle_entries = generate_subtitle_entries(sentences, durations)
+    
+    # 7. Crear clips de subtítulos para cada oración
+    subtitle_clips = []
+    for start, end, sentence in subtitle_entries:
+        dur = end - start
+        txt_clip = TextClip(
+            text=sentence,
+            font_size=24,
+            color='white',
+            font="font/arial.ttf",  # Asegúrate de tener esta fuente o cambia la ruta
+            method='caption',
+            size=(video_clip.w - 100, None)
+        ).with_position(('center', video_clip.h - 100)
+        ).with_start(start
+        ).with_duration(dur)
+        subtitle_clips.append(txt_clip)
+    
+    # 8. Combinar el video con los subtítulos
+    final_video = CompositeVideoClip([video_clip, *subtitle_clips])
+    
+    # 9. Exportar el video final
+    final_video.write_videofile(
         "video_con_audio_y_subtitulos.mp4",
         fps=video_clip.fps,
         codec="libx264",
