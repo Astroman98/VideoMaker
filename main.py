@@ -62,7 +62,7 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=40, scroll_spe
     temp_clip = TextClip(
         text=sentence,
         font_size=font_size,
-        color='#dbdbdb',
+        color='#cfcfcf',
         font="font/HKGrotesk-SemiBoldLegacy.ttf",
         text_align='center',
         method='caption',
@@ -82,7 +82,7 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=40, scroll_spe
         txt_clip = TextClip(
             text=sentence,
             font_size=font_size,
-            color='#dbdbdb',
+            color='#cfcfcf',
             font="font/HKGrotesk-SemiBoldLegacy.ttf",
             text_align='center',
             method='caption',
@@ -184,7 +184,10 @@ async def main():
     texto = (
        """ Al menos la mitad de las cosas en el templo están tomadas directamente de los masones, incluyendo la vestimenta y los adornos que habia alrededor del templo, y los adornos de dios, etc que parecía maldito, poseido por el diablo? los apretones de manos y las contraseñas. Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio? Aquí termina la historia 1.
         ---
-        Tuve un accidente cuando tenía doce años que me lesionó la espalda... sentarme me dolía, etc. y estar parado tambien me dolia y mucho, tanto que tenia que tomar medicacion para la molestia. Logré convencera mi madre de que me dejara caminar durante los servicios de varias horas en la biblioteca/cuarto de conferencias en el piso de abajo, donde había un altavoz que transmitía todo lo que pasaba en el púlpito. Aquí termina la historia 2. """
+        Tuve un accidente cuando tenía doce años que me lesionó la espalda... sentarme me dolía, etc y estar parado tambien me dolia y mucho, tanto que tenia que tomar medicacion para la molestia. Logré convencera mi madre de que me dejara caminar durante los servicios de varias horas en la biblioteca/cuarto de conferencias en el piso de abajo, donde había un altavoz que transmitía todo lo que pasaba en el púlpito. Aquí termina la historia 2.
+         
+          ---
+           Aquí iria la historia 3. """
     )
     
     # Separar el texto en segmentos usando el separador '---'
