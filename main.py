@@ -103,15 +103,9 @@ async def main():
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
-       """Crecí como Testigo de Jehová y finalmente "me alejé" alrededor de los 14 años. 
-En ese entonces no pensaba que fuera una secta, solo creía que estaban equivocados en su forma de ver las cosas... 
-¿Será posible cambiar algo? 
-No tenían respuestas para mis preguntas, y sabía por mi mamá que habían predicho el fin del mundo docenas de veces, y todas habían fallado. 
-
----
-Así que exploré otras religiones, terminando en la de mi mejor amigo: los mormones (o llamados como la Iglesia de Jesucristo de los Santos de los Últimos Días). 
-Al principio, solo parecía un poco raro por el nuevo libro de escrituras y la casi adoración al fundador, Joseph Smith.
-Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo con una especie de poncho, como una faja ancha abierta por ambos lados, y un hombre te toca la rodilla, el vientre y la cabeza con óleo consagrado. Después, te pones las prendas del templo, un conjunto de ropa interior que prometes usar el resto de tu vida."""
+       """ Al menos la mitad de las cosas en el templo están tomadas directamente de los masones, incluyendo la vestimenta? los apretones de manos y las contraseñas. Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio?
+        ---
+        Tuve un accidente cuando tenía doce años que me lesionó la espalda... sentarme me dolía. Logré convencer a mi madre de que me dejara caminar durante los servicios de varias horas en la biblioteca/cuarto de conferencias en el piso de abajo, donde había un altavoz que transmitía todo lo que pasaba en el púlpito.  """
     )
     
     # Separar el texto en segmentos usando el separador '---'
@@ -136,13 +130,25 @@ Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo c
             # Si no es el último segmento, insertar la transición (video de transicion_1)
             if seg_index < len(segments) - 1:
                 transition_clip = VideoFileClip("video/transicion_1.mp4").resized(res).with_start(current_time)
-                # Usar la duración completa del video de transición
-                trans_duration = transition_clip.duration
+                # Importar las clases de efecto (asegúrate de que tu instalación de MoviePy sea reciente)
+                from moviepy.video.fx.CrossFadeIn import CrossFadeIn
+                from moviepy.video.fx.CrossFadeOut import CrossFadeOut
+
+                # Crear copias de los efectos con una duración de 0.5 segundos
+                fadein_effect = CrossFadeIn(0.3).copy()
+                fadeout_effect = CrossFadeOut(0.3).copy()
+
+                # Aplicar el efecto de fade in y luego el de fade out
+                transition_clip = fadein_effect.apply(transition_clip)
+                transition_clip = fadeout_effect.apply(transition_clip)
+
+                # Agregar el clip de transición (con sus efectos) a la lista de overlays
                 overlays.append(transition_clip)
-                # Incluir también el audio de la transición (si lo tiene) en la pista de audio
+                # Si el clip de transición tiene audio, agregarlo a la lista de audios en la posición actual
                 if transition_clip.audio is not None:
                     audio_segments.append(transition_clip.audio.with_start(current_time))
-                current_time += trans_duration
+                current_time += transition_clip.duration
+
     
     total_duration = current_time
     print(f"Duración total del video: {total_duration} s")
