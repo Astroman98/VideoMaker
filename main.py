@@ -7,9 +7,11 @@ import edge_tts
 
 def split_sentences(texto):
     """
-    Separa el texto en oraciones usando el punto final como delimitador.
+    Separa el texto en oraciones usando como delimitadores:
+      - Un signo de interrogación (?)
+      - Un punto (.) que no sea parte de una elipsis ("...").
     """
-    oraciones = re.split(r'(?<=[.])\s+', texto.strip())
+    oraciones = re.split(r'(?<=[?]|(?<!\.)\.(?!\.))\s+', texto.strip())
     return oraciones
 
 async def generate_audio_for_sentence(sentence, output_file, voz="es-US-AlonsoNeural"):
@@ -51,7 +53,7 @@ async def main():
     # Texto completo pegado con comillas triples
     texto = (
        """Crecí como Testigo de Jehová y finalmente "me alejé" alrededor de los 14 años. 
-En ese entonces no pensaba que fuera una secta, solo creía que estaban equivocados en su forma de ver las cosas. 
+En ese entonces no pensaba que fuera una secta, solo creía que estaban equivocados en su forma de ver las cosas... Será posible cambiar algo? 
 No tenían respuestas para mis preguntas, y sabía por mi mamá que habían predicho el fin del mundo docenas de veces, y todas habían fallado. 
 
 Así que exploré otras religiones, terminando en la de mi mejor amigo: los mormones (o llamados como la Iglesia de Jesucristo de los Santos de los Últimos Días). 
@@ -60,7 +62,7 @@ Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo c
 """
     )
     
-    # 1. Separar el texto en oraciones
+    # 1. Separar el texto en oraciones (la función ahora también separa en "?" y respeta las elipsis)
     sentences = split_sentences(texto)
     print("Oraciones:")
     for i, s in enumerate(sentences, 1):
@@ -69,13 +71,15 @@ Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo c
     # 2. Generar un audio para cada oración
     audio_file_paths = await generate_all_audios(sentences)
     
-    # 3. Cargar cada audio y obtener su duración
+    # 3. Cargar cada audio y obtener su duración, recortando medio segundo del final
     audio_clips = []
     durations = []
     for file in audio_file_paths:
         clip = AudioFileClip(file)
+        new_duration = clip.duration - 0.5 if clip.duration > 0.5 else clip.duration
+        clip = clip.subclipped(0, new_duration)  # Nota: se usa "subclipped" en lugar de "subclip"
         audio_clips.append(clip)
-        durations.append(clip.duration)
+        durations.append(new_duration)
     
     total_duration = sum(durations)
     print(f"Duración total: {total_duration} segundos")
