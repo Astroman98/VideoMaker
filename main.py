@@ -85,10 +85,13 @@ async def process_segment(segment_text, res, seg_index):
     for sentence, d in zip(sentences, durations):
         txt_clip = TextClip(
             text=sentence,
-            font_size=24,
-            color='white',
-            font="font/arial.ttf",  # Ajusta la ruta si es necesario
+            font_size=40,
+            color='#dbdbdb',
+            font="font/HKGrotesk-SemiBoldLegacy.ttf",
+            text_align = 'center',
             method='caption',
+            stroke_width=2,
+            stroke_color='black',
             size=(res[0] - 100, None)
         ).with_position(('center', res[1] - 100)).with_start(cumulative).with_duration(d)
         text_clips.append(txt_clip)
@@ -103,9 +106,9 @@ async def main():
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
-       """ Al menos la mitad de las cosas en el templo están tomadas directamente de los masones, incluyendo la vestimenta? los apretones de manos y las contraseñas. Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio?
+       """ Al menos la mitad de las cosas en el templo están tomadas directamente de los masones, incluyendo la vestimenta? los apretones de manos y las contraseñas. Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio? Aquí termina la historia 1.
         ---
-        Tuve un accidente cuando tenía doce años que me lesionó la espalda... sentarme me dolía. Logré convencer a mi madre de que me dejara caminar durante los servicios de varias horas en la biblioteca/cuarto de conferencias en el piso de abajo, donde había un altavoz que transmitía todo lo que pasaba en el púlpito.  """
+        Tuve un accidente cuando tenía doce años que me lesionó la espalda... sentarme me dolía, y estar parado tambien me dolia y mucho, tanto que tenia que tomar medicacion para la molestia. Logré convencera mi madre de que me dejara caminar durante los servicios de varias horas en la biblioteca/cuarto de conferencias en el piso de abajo, donde había un altavoz que transmitía todo lo que pasaba en el púlpito. Aquí termina la historia 2. """
     )
     
     # Separar el texto en segmentos usando el separador '---'
