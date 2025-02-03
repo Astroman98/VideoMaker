@@ -21,7 +21,7 @@ async def generate_audio_for_sentence(sentence, output_file, voz="es-US-AlonsoNe
     Genera el audio TTS para una oración y lo guarda en output_file.
     Opciones de voz: es-US-AlonsoNeural, en-US-ChristopherNeural, etc.
     """
-    comunicador = edge_tts.Communicate(text=sentence, voice=voz)
+    comunicador = edge_tts.Communicate(text=sentence, voice=voz, rate= "+7%")
     await comunicador.save(output_file)
     print(f"Audio guardado: {output_file}")
 
@@ -108,7 +108,9 @@ No tenían respuestas para mis preguntas, y sabía por mi mamá que habían pred
 
 ---
 Así que exploré otras religiones, terminando en la de mi mejor amigo: los mormones (o llamados como la Iglesia de Jesucristo de los Santos de los Últimos Días). 
+---
 Al principio, solo parecía un poco raro por el nuevo libro de escrituras y la casi adoración al fundador, Joseph Smith.
+---
 Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo con una especie de poncho, como una faja ancha abierta por ambos lados, y un hombre te toca la rodilla, el vientre y la cabeza con óleo consagrado. Después, te pones las prendas del templo, un conjunto de ropa interior que prometes usar el resto de tu vida."""
     )
     
@@ -120,7 +122,7 @@ Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo c
     audio_segments = [] # Para acumular los clips de audio de cada segmento (con tiempos absolutos)
     current_time = 0    # Acumulador de tiempo para la línea de tiempo final
     
-    # Procesar cada segmento
+    # Procesar cada segmentohola
     for seg_index, seg in enumerate(segments):
         if seg.strip():
             # Procesar el segmento y obtener:
