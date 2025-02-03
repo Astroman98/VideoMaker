@@ -20,8 +20,10 @@ async def generate_audio_for_sentence(sentence, output_file, voz="es-US-AlonsoNe
     """
     Genera el audio TTS para una oración y lo guarda en output_file.
     Opciones de voz: es-US-AlonsoNeural, en-US-ChristopherNeural, etc.
+    También se añade un ajuste de velocidad (rate).
     """
-    comunicador = edge_tts.Communicate(text=sentence, voice=voz, rate= "+7%")
+    # En este ejemplo se añade rate="+7%" para aumentar la velocidad
+    comunicador = edge_tts.Communicate(text=sentence, voice=voz, rate="+7%")
     await comunicador.save(output_file)
     print(f"Audio guardado: {output_file}")
 
@@ -108,9 +110,7 @@ No tenían respuestas para mis preguntas, y sabía por mi mamá que habían pred
 
 ---
 Así que exploré otras religiones, terminando en la de mi mejor amigo: los mormones (o llamados como la Iglesia de Jesucristo de los Santos de los Últimos Días). 
----
 Al principio, solo parecía un poco raro por el nuevo libro de escrituras y la casi adoración al fundador, Joseph Smith.
----
 Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo con una especie de poncho, como una faja ancha abierta por ambos lados, y un hombre te toca la rodilla, el vientre y la cabeza con óleo consagrado. Después, te pones las prendas del templo, un conjunto de ropa interior que prometes usar el resto de tu vida."""
     )
     
@@ -118,34 +118,31 @@ Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo c
     segments = re.split(r'\n?\s*---+\s*\n?', texto.strip())
     print(f"Se encontraron {len(segments)} segmento(s).")
     
-    overlays = []       # Para acumular todos los TextClips (subtítulos) con tiempos absolutos
-    audio_segments = [] # Para acumular los clips de audio de cada segmento (con tiempos absolutos)
-    current_time = 0    # Acumulador de tiempo para la línea de tiempo final
+    overlays = []       # Acumular todos los TextClips (subtítulos) con tiempos absolutos
+    audio_segments = [] # Acumular los clips de audio de cada segmento (con tiempos absolutos)
+    current_time = 0    # Tiempo acumulado en la línea de tiempo final
     
-    # Procesar cada segmentohola
     for seg_index, seg in enumerate(segments):
         if seg.strip():
-            # Procesar el segmento y obtener:
-            #   - Una lista de TextClips (con tiempos relativos)
-            #   - El audio concatenado del segmento
-            #   - La duración total del segmento
+            # Procesar el segmento: se obtiene la lista de TextClips (con tiempos relativos),
+            # el audio concatenado del segmento y la duración total del segmento.
             text_clips, seg_audio, seg_duration = await process_segment(seg, res, seg_index)
-            # Ubicar cada TextClip en la línea de tiempo (se suma current_time al inicio relativo)
+            # Ubicar cada TextClip en la línea de tiempo (sumando current_time al inicio relativo)
             for clip in text_clips:
                 overlays.append(clip.with_start(current_time + clip.start))
             # Ubicar el audio del segmento en la línea de tiempo
             audio_segments.append(seg_audio.with_start(current_time))
             current_time += seg_duration
-            # Inserción de transición: entre segmentos se detiene la narración
+            # Si no es el último segmento, insertar la transición (video de transicion_1)
             if seg_index < len(segments) - 1:
-                # Crear overlay de transición: pantalla verde de 1 s
-                green_overlay = ColorClip(size=res, color=(0, 255, 0)).with_duration(2).with_start(current_time)
-                overlays.append(green_overlay)
-                # Agregar audio silencioso de 1 s para la transición
-                silent_array = np.zeros((int(44100 * 1), 2))
-                silent_audio = AudioArrayClip(silent_array, fps=44100).with_duration(2).with_start(current_time)
-                audio_segments.append(silent_audio)
-                current_time += 2  # Sumar 1 s de transición
+                transition_clip = VideoFileClip("video/transicion_1.mp4").resized(res).with_start(current_time)
+                # Usar la duración completa del video de transición
+                trans_duration = transition_clip.duration
+                overlays.append(transition_clip)
+                # Incluir también el audio de la transición (si lo tiene) en la pista de audio
+                if transition_clip.audio is not None:
+                    audio_segments.append(transition_clip.audio.with_start(current_time))
+                current_time += trans_duration
     
     total_duration = current_time
     print(f"Duración total del video: {total_duration} s")
@@ -153,10 +150,10 @@ Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo c
     # Extraer el fondo continuo para cubrir toda la duración
     final_bg = main_bg.subclipped(0, total_duration).resized(res)
     
-    # Crear el composite final: fondo + overlays (subtítulos y transiciones)
+    # Crear el composite final: fondo continuo + overlays (subtítulos y transiciones)
     final_video = CompositeVideoClip([final_bg] + overlays, size=res).with_duration(total_duration)
     
-    # Concatenar los audios (de los segmentos y silenciosos) para formar la pista de audio final
+    # Concatenar los audios (de segmentos y de transiciones) para formar la pista de audio final
     final_audio = concatenate_audioclips(audio_segments)
     final_video = final_video.with_audio(final_audio)
     
