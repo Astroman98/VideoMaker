@@ -53,51 +53,127 @@ def generate_subtitle_entries(sentences, durations):
         start += d
     return entries
 
+def create_scrolling_text_clip(sentence, res, duration, font_size=40, scroll_speed=1.8):
+    """
+    Crea un TextClip con efecto de scroll si el texto supera las dos líneas,
+    asegurando que todo el texto sea visible durante el scroll.
+    """
+    # Primero creamos el TextClip para medir su altura
+    temp_clip = TextClip(
+        text=sentence,
+        font_size=font_size,
+        color='#dbdbdb',
+        font="font/HKGrotesk-SemiBoldLegacy.ttf",
+        text_align='center',
+        method='caption',
+        stroke_width=2,
+        stroke_color='black',
+        size=(res[0] - 100, None)
+    )
+    
+    # Calculamos la altura de dos líneas y la altura total del texto
+    line_height = font_size * 1.1  # Aproximación del alto de línea con espaciado, anteriormente era 1.2
+    two_lines_height = line_height * 2
+    text_height = temp_clip.h
+    
+    # Solo aplicamos scroll si el texto supera las dos líneas
+    if text_height > two_lines_height:
+        # Creamos el clip de texto completo
+        txt_clip = TextClip(
+            text=sentence,
+            font_size=font_size,
+            color='#dbdbdb',
+            font="font/HKGrotesk-SemiBoldLegacy.ttf",
+            text_align='center',
+            method='caption',
+            stroke_width=2,
+            stroke_color='black',
+            size=(res[0] - 100, None)
+        )
+        
+        # Calculamos la distancia total de scroll necesaria
+        scroll_distance = text_height - two_lines_height
+        
+        def scroll_position(t):
+            # Esperar 1 segundo antes de comenzar el scroll
+            if t < 1.2:
+                return 0
+            # Usar el tiempo restante para el scroll
+            remaining_time = duration - 1.2
+            # Dejar 0.3s al final
+            scroll_time = remaining_time - 0.3
+            # Calcular la posición del scroll con velocidad ajustada
+            progress = min(1, ((t - 1) / scroll_time) * scroll_speed)
+            # Asegurarnos de que el scroll llegue hasta el final del texto
+            return progress * scroll_distance
+        
+        # Posicionar el texto dentro del contenedor
+        txt_clip = (txt_clip
+                   # Comenzar con el texto en la parte superior del contenedor
+                   .with_position(lambda t: ('center', -scroll_position(t)))
+                   .with_duration(duration))
+        
+        # Crear un contenedor del tamaño de dos líneas
+        container = CompositeVideoClip(
+            [txt_clip],
+            size=(res[0] - 100, int(two_lines_height))
+        ).with_duration(duration)
+        
+        # Posicionar el contenedor más arriba en el video
+        bottom_margin = 80  # Ajustar este valor según sea necesario
+        final_clip = container.with_position(('center', res[1] - bottom_margin - two_lines_height))
+        
+    else:
+        # Para textos de dos líneas o menos, simplemente centramos sin scroll
+        # También ajustamos la posición vertical para mantener consistencia
+        bottom_margin = 80
+        final_clip = temp_clip.with_position(('center', res[1] - bottom_margin - two_lines_height))
+    
+    return final_clip.with_duration(duration)
+
+
+
+
 async def process_segment(segment_text, res, seg_index):
     """
-    Procesa un segmento (bloque de texto sin el separador '---'):
-      - Separa el segmento en oraciones.
-      - Genera el audio TTS para cada oración.
-      - Carga cada audio, recorta 0.5 s del final y obtiene su duración.
-      - Crea un TextClip por oración (con start relativo y duración correspondiente).
-    Retorna una tupla:
-      (lista de TextClips, audio concatenado del segmento, duración total del segmento)
+    Procesa un segmento con soporte para subtítulos con scroll enmascarado.
     """
     # Dividir en oraciones
     sentences = split_sentences(segment_text)
     print(f"Segmento {seg_index} – oraciones:")
     for i, s in enumerate(sentences, 1):
         print(f"  {i}: {s}")
+    
     # Generar audios por oración
     audio_files = await generate_all_audios(sentences, seg_index)
     audio_clips = []
     durations = []
+    
     for file in audio_files:
         clip = AudioFileClip(file)
         new_duration = clip.duration - 0.5 if clip.duration > 0.5 else clip.duration
         clip = clip.subclipped(0, new_duration)
         audio_clips.append(clip)
         durations.append(new_duration)
+    
     seg_duration = sum(durations)
-    # Crear TextClips para cada oración, con tiempos relativos
+    
+    # Crear TextClips para cada oración, con soporte para scroll enmascarado
     text_clips = []
     cumulative = 0
     for sentence, d in zip(sentences, durations):
-        txt_clip = TextClip(
-            text=sentence,
-            font_size=40,
-            color='#dbdbdb',
-            font="font/HKGrotesk-SemiBoldLegacy.ttf",
-            text_align = 'center',
-            method='caption',
-            stroke_width=2,
-            stroke_color='black',
-            size=(res[0] - 100, None)
-        ).with_position(('center', res[1] - 100)).with_start(cumulative).with_duration(d)
+        txt_clip = create_scrolling_text_clip(
+            sentence=sentence,
+            res=res,
+            duration=d
+        ).with_start(cumulative)
+        
         text_clips.append(txt_clip)
         cumulative += d
+    
     segment_audio = concatenate_audioclips(audio_clips)
     return text_clips, segment_audio, seg_duration
+
 
 async def main():
     # Abrir el video de fondo de forma continua (gameplay1.mp4)
@@ -106,9 +182,9 @@ async def main():
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
-       """ Al menos la mitad de las cosas en el templo están tomadas directamente de los masones, incluyendo la vestimenta? los apretones de manos y las contraseñas. Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio? Aquí termina la historia 1.
+       """ Al menos la mitad de las cosas en el templo están tomadas directamente de los masones, incluyendo la vestimenta y los adornos que habia alrededor del templo, y los adornos de dios, etc que parecía maldito, poseido por el diablo? los apretones de manos y las contraseñas. Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio? Aquí termina la historia 1.
         ---
-        Tuve un accidente cuando tenía doce años que me lesionó la espalda... sentarme me dolía, y estar parado tambien me dolia y mucho, tanto que tenia que tomar medicacion para la molestia. Logré convencera mi madre de que me dejara caminar durante los servicios de varias horas en la biblioteca/cuarto de conferencias en el piso de abajo, donde había un altavoz que transmitía todo lo que pasaba en el púlpito. Aquí termina la historia 2. """
+        Tuve un accidente cuando tenía doce años que me lesionó la espalda... sentarme me dolía, etc. y estar parado tambien me dolia y mucho, tanto que tenia que tomar medicacion para la molestia. Logré convencera mi madre de que me dejara caminar durante los servicios de varias horas en la biblioteca/cuarto de conferencias en el piso de abajo, donde había un altavoz que transmitía todo lo que pasaba en el púlpito. Aquí termina la historia 2. """
     )
     
     # Separar el texto en segmentos usando el separador '---'
