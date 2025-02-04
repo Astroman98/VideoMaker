@@ -7,6 +7,9 @@ from moviepy import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip, 
 from moviepy import concatenate_audioclips
 import edge_tts
 from moviepy.audio.AudioClip import AudioArrayClip
+from generate_title import generate_title_video
+from moviepy import concatenate_videoclips
+
 
 def split_sentences(texto):
     """
@@ -176,9 +179,21 @@ async def process_segment(segment_text, res, seg_index):
 
 
 async def main():
-    # Abrir el video de fondo de forma continua (gameplay1.mp4)
+    # Abrir el video de fondo primero para obtener la resolución base
     main_bg = VideoFileClip("video/gameplay1.mp4")
     res = (main_bg.w, main_bg.h)
+    
+    # Generar el título usando la misma resolución del video principal
+    generate_title_video(
+        text="Mi Video",
+        duration=4,
+        resolution=res,  # Usar la misma resolución del video principal
+        bg_color=(0, 255, 0)
+    )
+    
+    # Abrir el video de fondo de forma continua (gameplay1.mp4)
+    #main_bg = VideoFileClip("video/gameplay1.mp4")
+    #res = (main_bg.w, main_bg.h)
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
@@ -212,7 +227,7 @@ async def main():
             # Si no es el último segmento, insertar la transición (video de transicion_1)
             if seg_index < len(segments) - 1:
                 transition_clip = VideoFileClip("video/transicion_1.mp4").resized(res).with_start(current_time)
-                # Importar las clases de efecto (asegúrate de que tu instalación de MoviePy sea reciente)
+                # Importar las clases de efecto
                 from moviepy.video.fx.CrossFadeIn import CrossFadeIn
                 from moviepy.video.fx.CrossFadeOut import CrossFadeOut
 
@@ -226,24 +241,33 @@ async def main():
 
                 # Agregar el clip de transición (con sus efectos) a la lista de overlays
                 overlays.append(transition_clip)
-                # Si el clip de transición tiene audio, agregarlo a la lista de audios en la posición actual
+                # Si el clip de transición tiene audio, agregarlo a la lista de audios
                 if transition_clip.audio is not None:
                     audio_segments.append(transition_clip.audio.with_start(current_time))
                 current_time += transition_clip.duration
 
-    
     total_duration = current_time
     print(f"Duración total del video: {total_duration} s")
+
+    # Cargar el video del título y asegurar que tenga la misma resolución
+    title_video = VideoFileClip("title.mp4").resized(res)
     
-    # Extraer el fondo continuo para cubrir toda la duración
-    final_bg = main_bg.subclipped(0, total_duration).resized(res)
+    # Crear el contenido principal (sin crear un nuevo CompositeVideoClip)
+    final_bg = main_bg.subclipped(0, total_duration)
+    main_content = CompositeVideoClip(
+        [final_bg] + overlays,
+        size=res
+    ).with_duration(total_duration)
     
-    # Crear el composite final: fondo continuo + overlays (subtítulos y transiciones)
-    final_video = CompositeVideoClip([final_bg] + overlays, size=res).with_duration(total_duration)
-    
-    # Concatenar los audios (de segmentos y de transiciones) para formar la pista de audio final
+    # Agregar el audio al contenido principal
     final_audio = concatenate_audioclips(audio_segments)
-    final_video = final_video.with_audio(final_audio)
+    main_content = main_content.with_audio(final_audio)
+    
+    # Concatenar el título con el contenido principal
+    final_video = concatenate_videoclips(
+        [title_video, main_content],
+        method="compose"  # Usar compose en lugar del método por defecto
+    )
     
     # Exportar el video final
     final_video.write_videofile(
@@ -253,7 +277,10 @@ async def main():
         audio_codec="aac"
     )
     print("Video final guardado como: video_con_audio_y_subtitulos.mp4")
+    
+    # Cerrar todos los clips
     main_bg.close()
+    title_video.close()
 
 if __name__ == "__main__":
     asyncio.run(main())
