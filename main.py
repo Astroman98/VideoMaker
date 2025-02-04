@@ -183,17 +183,10 @@ async def main():
     main_bg = VideoFileClip("video/gameplay1.mp4")
     res = (main_bg.w, main_bg.h)
     
-    # Generar el título usando la misma resolución del video principal
-    #generate_title_video(
-    #    text="Mi Video",
-    #    duration=4,
-    #    resolution=res,  # Usar la misma resolución del video principal
-    #    bg_color=(0, 255, 0)
-    #)
 
 
     await generate_title_video(
-    text="Mi Video",
+    text="Exmiembros de sectas, ¿en qué momento pensaron: 'oh mierda, estoy en una secta'? Exmiembros de sectas, ¿en qué momento pensaron: 'oh mierda, estoy en una secta'?",
     resolution=res
     )
     
@@ -203,9 +196,9 @@ async def main():
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
-       """ Al menos la mitad de las cosas en el templo están tomadas directamente de los masones, incluyendo la vestimenta y los adornos que habia alrededor del templo, y los adornos de dios, etc que parecía maldito, poseido por el diablo? los apretones de manos y las contraseñas. Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio? Aquí termina la historia 1.
+       """ Al menos la mitad de las cosas en el templo están tomadas directamente de los masones, incluyendo la vestimenta y los adornos que habia alrededor del templo, y los adornos de dios, etc que parecía maldito, poseido por el diablo? los apretones de manos y las contraseñas.
         ---
-        Tuve un accidente cuando tenía doce años que me lesionó la espalda... sentarme me dolía, etc y estar parado tambien me dolia y mucho, tanto que tenia que tomar medicacion para la molestia. Logré convencera mi madre de que me dejara caminar durante los servicios de varias horas en la biblioteca/cuarto de conferencias en el piso de abajo, donde había un altavoz que transmitía todo lo que pasaba en el púlpito. Aquí termina la historia 2.
+        Tuve un accidente cuando tenía doce años que me lesionó la espalda...  Aquí termina la historia 2.
          
           ---
            Aquí iria la historia 3. """

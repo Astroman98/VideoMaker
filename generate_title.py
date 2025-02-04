@@ -6,9 +6,10 @@ import os
 async def generate_title_video(
     text="Hola, este es un título",
     resolution=(1920, 1080),
-    font_size=70,
-    font_color='white',
-    voz="es-US-AlonsoNeural"
+    font_size=60,
+    font_color='#cfcfcf',
+    voz="es-US-AlonsoNeural",
+
 ):
     """
     Genera un video con un título sobre un video de fondo,
@@ -27,7 +28,7 @@ async def generate_title_video(
     tts_audio = AudioFileClip(audio_file)
     
     # Duración total: audio + 1 segundo de silencio
-    duration = tts_audio.duration + 1
+    duration = tts_audio.duration + 0.3
     
     # Recortar el video de fondo si es necesario
     background = background.subclipped(0, duration)
