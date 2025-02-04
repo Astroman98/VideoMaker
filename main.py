@@ -186,7 +186,7 @@ async def main():
 
 
     await generate_title_video(
-    text="Exmiembros de sectas, ¿en qué momento pensaron: 'oh mierda, estoy en una secta'? Exmiembros de sectas, ¿en qué momento pensaron: 'oh mierda, estoy en una secta'?",
+    text="Exmiembros de sectas, ¿en qué momento pensaron: 'oh mierda, estoy en una secta'?",
     resolution=res
     )
     
@@ -196,12 +196,10 @@ async def main():
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
-       """ Al menos la mitad de las cosas en el templo están tomadas directamente de los masones, incluyendo la vestimenta y los adornos que habia alrededor del templo, y los adornos de dios, etc que parecía maldito, poseido por el diablo? los apretones de manos y las contraseñas.
+       """ Al menos la mitad de las cosas en el templo están tomadas directamente de los masones.
         ---
         Tuve un accidente cuando tenía doce años que me lesionó la espalda...  Aquí termina la historia 2.
-         
-          ---
-           Aquí iria la historia 3. """
+ """
     )
     
     # Separar el texto en segmentos usando el separador '---'

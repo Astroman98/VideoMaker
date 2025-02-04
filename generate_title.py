@@ -2,6 +2,10 @@ from moviepy import TextClip, CompositeVideoClip, VideoFileClip, AudioFileClip
 import edge_tts
 import asyncio
 import os
+from moviepy import concatenate_videoclips
+from moviepy.audio.AudioClip import AudioArrayClip
+from moviepy import concatenate_audioclips
+import numpy as np
 
 async def generate_title_video(
     text="Hola, este es un título",
@@ -26,12 +30,32 @@ async def generate_title_video(
     # Cargar el video de fondo y el audio TTS
     background = VideoFileClip("video/intro1.mp4", audio=False)  # audio=False ya que no tiene audio
     tts_audio = AudioFileClip(audio_file)
+
+
+    # Duración del silencio inicial
+    silence_duration = 1
+
+    # Usamos las mismas características de audio (fps) que el TTS
+    fps = tts_audio.fps  
+    samples = int(fps * silence_duration)
+
+    # Suponiendo que tu TTS es estéreo: shape (samples, 2)
+    # Si tu TTS es mono, usa shape (samples,)
+    silence_array = np.zeros((samples, 2), dtype=np.float32)
+
+    silence_clip = AudioArrayClip(silence_array, fps=fps)
+
+    combined_audio = concatenate_audioclips([silence_clip, tts_audio])
+
+
+
     
     # Duración total: audio + 1 segundo de silencio
-    duration = tts_audio.duration + 0.3
+    duration = combined_audio.duration
     
     # Recortar el video de fondo si es necesario
     background = background.subclipped(0, duration)
+
     
     # Crear el texto
     text_clip = TextClip(
@@ -53,7 +77,7 @@ async def generate_title_video(
     ).with_duration(duration)
     
     # Agregar solo el audio TTS
-    final_clip = final_clip.with_audio(tts_audio)
+    final_clip = final_clip.with_audio(combined_audio)
     
     # Guardar el video
     final_clip.write_videofile(
