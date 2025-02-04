@@ -184,11 +184,17 @@ async def main():
     res = (main_bg.w, main_bg.h)
     
     # Generar el título usando la misma resolución del video principal
-    generate_title_video(
-        text="Mi Video",
-        duration=4,
-        resolution=res,  # Usar la misma resolución del video principal
-        bg_color=(0, 255, 0)
+    #generate_title_video(
+    #    text="Mi Video",
+    #    duration=4,
+    #    resolution=res,  # Usar la misma resolución del video principal
+    #    bg_color=(0, 255, 0)
+    #)
+
+
+    await generate_title_video(
+    text="Mi Video",
+    resolution=res
     )
     
     # Abrir el video de fondo de forma continua (gameplay1.mp4)
