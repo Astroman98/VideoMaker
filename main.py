@@ -61,7 +61,7 @@ def generate_subtitle_entries(sentences, durations):
         start += d
     return entries
 
-def create_scrolling_text_clip(sentence, res, duration, font_size=40, scroll_speed=1.8):
+def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_speed=1.8):
     """
     Crea un TextClip con efecto de scroll si el texto supera las dos líneas,
     asegurando que todo el texto sea visible durante el scroll.
@@ -184,9 +184,10 @@ async def process_segment(segment_text, res, seg_index):
 
 
 async def main():
+    target_resolution = (1920, 1080)
     # Abrir el video de fondo primero para obtener la resolución base
-    main_bg = VideoFileClip("video/gameplay1.mp4")
-    res = (main_bg.w, main_bg.h)
+    main_bg = VideoFileClip("video/gameplay2.mp4").resized(target_resolution)
+    res = target_resolution  # Usar la resolución estándar en lugar de la del video
     
 
     await generate_title_video(
@@ -200,7 +201,8 @@ async def main():
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
-       """ Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio.
+       """ Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo, Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo, Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. ---
+       Hola.
 
  """
     )
@@ -309,9 +311,19 @@ async def main():
     # Exportar el video final
     final_video.write_videofile(
         "video_con_audio_y_subtitulos.mp4",
-        fps=24,
+        fps=60,
         codec="libx264",
-        audio_codec="aac"
+        bitrate="8000k",  # Aumentar el bitrate para mejor calidad de video
+        audio_codec="aac",
+        audio_bitrate="320k",  # Mejor calidad de audio
+        preset="slow",  # Mejor compresión (opciones: ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow)
+        threads=4,
+        ffmpeg_params=[
+            "-crf", "17",  # Factor de calidad constante (0-51, menor = mejor calidad, 17-28 es un buen rango)
+            "-profile:v", "high",  # Perfil de codificación
+            "-level", "4.2",
+            "-pix_fmt", "yuv420p",  # Formato de pixel para mejor compatibilidad
+        ]
     )
     print("Video final guardado como: video_con_audio_y_subtitulos.mp4")
     

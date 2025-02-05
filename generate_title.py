@@ -18,7 +18,7 @@ from moviepy.audio.fx.AudioFadeOut import AudioFadeOut
 async def generate_title_video(
     text="Hola, este es un título",
     resolution=(1920, 1080),
-    font_size=93,
+    font_size=120,
     font_color='#cfcfcf',
     voz="es-US-AlonsoNeural",
 ):
@@ -35,7 +35,7 @@ async def generate_title_video(
     await comunicador.save(audio_file)
     
     # Cargar el video de fondo y el audio TTS
-    background = VideoFileClip("video/intro1.mp4", audio=False)
+    background = VideoFileClip("video/intro1.mp4", audio=False).resized(resolution)
     tts_audio = AudioFileClip(audio_file)
 
 
@@ -86,7 +86,7 @@ async def generate_title_video(
         stroke_width=2,
         stroke_color='black',
         size=(resolution[0] - 100, None),
-        margin=(50, 50)
+        margin=(100, 100)
     ).with_position('center')
     
 
@@ -113,10 +113,20 @@ async def generate_title_video(
     
     # Guardar el video
     final_clip.write_videofile(
-        "title.mp4",
-        fps=24,
+        "title.mp4",  # o "video_con_audio_y_subtitulos.mp4" en main.py
+        fps=60,  # Aumentar FPS para mayor suavidad
         codec="libx264",
-        audio_codec="aac"
+        bitrate="8000k",  # Aumentar el bitrate para mejor calidad de video
+        audio_codec="aac",
+        audio_bitrate="320k",  # Mejor calidad de audio
+        preset="slow",  # Mejor compresión (opciones: ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow)
+        threads=4,  # Usar múltiples núcleos para el procesamiento
+        ffmpeg_params=[
+            "-crf", "17",  # Factor de calidad constante (0-51, menor = mejor calidad, 17-28 es un buen rango)
+            "-profile:v", "high",  # Perfil de codificación
+            "-level", "4.2",
+            "-pix_fmt", "yuv420p",  # Formato de pixel para mejor compatibilidad
+        ]
     )
     
     # Cerrar los clips
