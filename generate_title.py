@@ -114,18 +114,19 @@ async def generate_title_video(
     # Guardar el video
     final_clip.write_videofile(
         "title.mp4",  # o "video_con_audio_y_subtitulos.mp4" en main.py
-        fps=60,  # Aumentar FPS para mayor suavidad
-        codec="libx264",
-        bitrate="8000k",  # Aumentar el bitrate para mejor calidad de video
+        fps=60,
+        codec="libx264",  # Volver a libx264 que es más compatible
+        bitrate="8000k",
         audio_codec="aac",
-        audio_bitrate="320k",  # Mejor calidad de audio
-        preset="slow",  # Mejor compresión (opciones: ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow)
-        threads=4,  # Usar múltiples núcleos para el procesamiento
+        audio_bitrate="320k",
+        preset="faster",  # Usar 'faster' en lugar de 'slow' para mejor velocidad
+        threads=8,  # Aumentar el número de threads
         ffmpeg_params=[
-            "-crf", "17",  # Factor de calidad constante (0-51, menor = mejor calidad, 17-28 es un buen rango)
-            "-profile:v", "high",  # Perfil de codificación
+            "-crf", "20",  # Un poco más alto que 17 para mejor velocidad, aún buena calidad
+            "-profile:v", "high",
             "-level", "4.2",
-            "-pix_fmt", "yuv420p",  # Formato de pixel para mejor compatibilidad
+            "-pix_fmt", "yuv420p",
+            "-tune", "fastdecode"  # Optimizar para decodificación rápida
         ]
     )
     
