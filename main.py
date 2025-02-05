@@ -189,7 +189,6 @@ async def main():
     res = (main_bg.w, main_bg.h)
     
 
-
     await generate_title_video(
     text="Exmiembros de sectas, ¿en qué momento pensaron: 'oh mierda, estoy en una secta'?",
     resolution=res
@@ -246,23 +245,36 @@ Ah, y necesitas conocer estos apretones de manos y señales para. Ah, y necesita
                     audio_segments.append(transition_clip.audio.with_start(current_time))
                 current_time += transition_clip.duration
 
+
+
+
     total_duration = current_time
     print(f"Duración total del video: {total_duration} s")
+
+        # Crear silencio final de 2 segundos
+    silence_duration = 2
+    fps = 44100  # Frecuencia de muestreo estándar
+    samples = int(fps * silence_duration)
+    silence_array = np.zeros((samples, 2), dtype=np.float32)
+    end_silence_clip = AudioArrayClip(silence_array, fps=fps)
+
+    # Calcular la duración total incluyendo el silencio
+    total_duration_with_silence = total_duration + silence_duration
 
     # Cargar el video del título y asegurar que tenga la misma resolución
     title_video = VideoFileClip("title.mp4").resized(res)
     
     # Crear el contenido principal (sin crear un nuevo CompositeVideoClip)
-    final_bg = main_bg.subclipped(0, total_duration)
+    final_bg = main_bg.subclipped(0, total_duration_with_silence)
     main_content = CompositeVideoClip(
         [final_bg] + overlays,
         size=res
-    ).with_duration(total_duration)
+    ).with_duration(total_duration_with_silence)
 
     background_music = AudioFileClip("music/pigletOST.mp3")
 
-    if background_music.duration > total_duration:
-        background_music = background_music.subclipped(0, total_duration)
+    if background_music.duration > total_duration_with_silence:
+        background_music = background_music.subclipped(0, total_duration_with_silence)
 
     audio_fadein = AudioFadeIn(1.5).copy()
     audio_fadeout = AudioFadeOut(0.8).copy()
@@ -278,7 +290,7 @@ Ah, y necesitas conocer estos apretones de manos y señales para. Ah, y necesita
 
     
     # Agregar el audio al contenido principal
-    main_audio = concatenate_audioclips(audio_segments)
+    main_audio = concatenate_audioclips(audio_segments + [end_silence_clip])
     final_audio = CompositeAudioClip([main_audio, background_music])
     main_content = main_content.with_audio(final_audio)
 
