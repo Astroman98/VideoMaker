@@ -190,7 +190,7 @@ async def main():
     
 
     await generate_title_video(
-    text="Exmiembros de sectas, ¿en qué momento pensaron: 'oh mierda, estoy en una secta'?",
+    text="Exmiembros de sectas, ¿en qué momento pensaron: 'oh mierda, estoy en una secta'? Exmiembros de sectas, ¿en qué momento pensaron: 'oh mierda, estoy en una secta'?",
     resolution=res
     )
     
@@ -200,9 +200,7 @@ async def main():
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
-       """ Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio. necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio.
-
-Ah, y necesitas conocer estos apretones de manos y señales para. Ah, y necesitas conocer estos apretones de manos y señales para.
+       """ Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio.
 
  """
     )
