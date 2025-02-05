@@ -14,6 +14,7 @@ from moviepy.video.fx.CrossFadeOut import CrossFadeOut
 from moviepy.audio.fx.AudioFadeIn import AudioFadeIn
 from moviepy.audio.fx.AudioFadeOut import AudioFadeOut
 from moviepy import CompositeAudioClip
+import random
 
 
 def split_sentences(texto):
@@ -183,12 +184,34 @@ async def process_segment(segment_text, res, seg_index):
     return text_clips, segment_audio, seg_duration
 
 
+# En la función main(), antes de procesar los segmentos:
+def get_random_video_segment(video_clip, needed_duration):
+    """
+    Selecciona un fragmento aleatorio del video que dure needed_duration segundos,
+    asegurándose de que haya suficiente video restante.
+    """
+    # Dejar un margen de seguridad al final del video (por ejemplo, 10 segundos)
+    margin = 10
+    max_start_time = video_clip.duration - needed_duration - margin
+    
+    if max_start_time < 0:
+        raise ValueError("El video de gameplay es más corto que la duración necesaria")
+    
+    # Elegir un punto de inicio aleatorio
+    start_time = random.uniform(0, max_start_time)
+    
+    return start_time
+
+
+
 async def main():
     target_resolution = (1920, 1080)
     # Abrir el video de fondo primero para obtener la resolución base
-    main_bg = VideoFileClip("video/gameplay2.mp4").resized(target_resolution)
+    main_bg = VideoFileClip("video/Gameplay1.mp4").resized(target_resolution)
     res = target_resolution  # Usar la resolución estándar en lugar de la del video
     
+    # Definir silence_duration al inicio
+    silence_duration = 2
 
     await generate_title_video(
     text="Exmiembros de sectas",
@@ -207,10 +230,33 @@ async def main():
  """
     )
     
+
+
+
+
     # Separar el texto en segmentos usando el separador '---'
     segments = re.split(r'\n?\s*---+\s*\n?', texto.strip())
+    total_duration = 0
     print(f"Se encontraron {len(segments)} segmento(s).")
     
+# Calcular la duración total necesaria
+    for seg in segments:
+        if seg.strip():
+            _, seg_audio, seg_duration = await process_segment(seg, res, 0)
+            total_duration += seg_duration
+            # Liberamos el audio para no consumir memoria
+            seg_audio.close()
+
+
+    # Agregar duración del silencio final
+    total_duration_with_silence = total_duration + silence_duration
+    
+    # Obtener un punto de inicio aleatorio para el video de fondo
+    start_time = get_random_video_segment(main_bg, total_duration_with_silence)
+    
+    # Recortar el video de fondo al segmento seleccionado
+    main_bg = main_bg.subclipped(start_time, start_time + total_duration_with_silence)
+
     overlays = []       # Acumular todos los TextClips (subtítulos) con tiempos absolutos
     audio_segments = [] # Acumular los clips de audio de cada segmento (con tiempos absolutos)
     current_time = 0    # Tiempo acumulado en la línea de tiempo final
@@ -228,7 +274,7 @@ async def main():
             current_time += seg_duration
             # Si no es el último segmento, insertar la transición (video de transicion_1)
             if seg_index < len(segments) - 1:
-                transition_clip = VideoFileClip("video/transicion_1.mp4").resized(res).with_start(current_time)
+                transition_clip = VideoFileClip("video/transition_1.mp4").resized(res).with_start(current_time)
 
                 # Crear copias de los efectos con una duración de 0.5 segundos
                 fadein_effect = CrossFadeIn(0.3).copy()
@@ -251,8 +297,8 @@ async def main():
     total_duration = current_time
     print(f"Duración total del video: {total_duration} s")
 
-        # Crear silencio final de 2 segundos
-    silence_duration = 2
+    # Crear silencio final de 2 segundos
+    #silence_duration = 2
     fps = 44100  # Frecuencia de muestreo estándar
     samples = int(fps * silence_duration)
     silence_array = np.zeros((samples, 2), dtype=np.float32)
