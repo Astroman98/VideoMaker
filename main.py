@@ -80,7 +80,7 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
     )
     
     # Calculamos la altura de dos líneas y la altura total del texto
-    line_height = font_size * 1.1  # Aproximación del alto de línea con espaciado, anteriormente era 1.2
+    line_height = font_size * 1  # Aproximación del alto de línea con espaciado, anteriormente era 1.2
     two_lines_height = line_height * 2
     text_height = temp_clip.h
     
@@ -124,7 +124,7 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
         # Crear un contenedor del tamaño de dos líneas
         container = CompositeVideoClip(
             [txt_clip],
-            size=(res[0] - 100, int(two_lines_height))
+            size=(res[0] - 95, int(two_lines_height))
         ).with_duration(duration)
         
         # Posicionar el contenedor más arriba en el video
@@ -191,7 +191,7 @@ async def main():
     
 
     await generate_title_video(
-    text="Exmiembros de sectas, ¿en qué momento pensaron: 'oh mierda, estoy en una secta'? Exmiembros de sectas, ¿en qué momento pensaron: 'oh mierda, estoy en una secta'?",
+    text="Exmiembros de sectas",
     resolution=res
     )
     
@@ -201,7 +201,7 @@ async def main():
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
-       """ Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo, Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo, Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. ---
+       """ Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo, Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo, Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. ---
        Hola.
 
  """

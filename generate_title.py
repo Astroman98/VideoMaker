@@ -18,7 +18,7 @@ from moviepy.audio.fx.AudioFadeOut import AudioFadeOut
 async def generate_title_video(
     text="Hola, este es un título",
     resolution=(1920, 1080),
-    font_size=120,
+    font_size=140,
     font_color='#cfcfcf',
     voz="es-US-AlonsoNeural",
 ):
