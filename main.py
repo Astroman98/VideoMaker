@@ -214,7 +214,7 @@ async def main():
     silence_duration = 2
 
     await generate_title_video(
-    text="Exmiembros de sectas",
+    text="Exmiembros",
     resolution=res
     )
     
@@ -224,7 +224,7 @@ async def main():
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
-       """ Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo, Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo, Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. ---
+       """ Hola. Hola. Hola. Hola a todos, como estan? Hola. ---
        Hola.
 
  """

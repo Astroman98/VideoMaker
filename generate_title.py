@@ -35,7 +35,7 @@ async def generate_title_video(
     await comunicador.save(audio_file)
     
     # Cargar el video de fondo y el audio TTS
-    background = VideoFileClip("video/intro1.mp4", audio=False).resized(resolution)
+    background = VideoFileClip("video/intro4.mp4", audio=False).resized(resolution)
     tts_audio = AudioFileClip(audio_file)
 
 
