@@ -9,6 +9,8 @@ import edge_tts
 from moviepy.audio.AudioClip import AudioArrayClip
 from generate_title import generate_title_video
 from moviepy import concatenate_videoclips
+from moviepy.video.fx.CrossFadeIn import CrossFadeIn
+from moviepy.video.fx.CrossFadeOut import CrossFadeOut
 
 
 def split_sentences(texto):
@@ -196,9 +198,10 @@ async def main():
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
-       """ Al menos la mitad de las cosas en el templo están tomadas directamente de los masones.
-        ---
-        Tuve un accidente cuando tenía doce años que me lesionó la espalda...  Aquí termina la historia 2.
+       """ Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio.
+---
+
+
  """
     )
     
@@ -225,8 +228,7 @@ async def main():
             if seg_index < len(segments) - 1:
                 transition_clip = VideoFileClip("video/transicion_1.mp4").resized(res).with_start(current_time)
                 # Importar las clases de efecto
-                from moviepy.video.fx.CrossFadeIn import CrossFadeIn
-                from moviepy.video.fx.CrossFadeOut import CrossFadeOut
+
 
                 # Crear copias de los efectos con una duración de 0.5 segundos
                 fadein_effect = CrossFadeIn(0.3).copy()
@@ -259,7 +261,12 @@ async def main():
     # Agregar el audio al contenido principal
     final_audio = concatenate_audioclips(audio_segments)
     main_content = main_content.with_audio(final_audio)
-    
+
+    #Aplicar fade in al contenido principal
+    from moviepy.video.fx.FadeIn import FadeIn
+    fade_in1 = FadeIn(1.5).copy()
+    main_content = fade_in1.apply(main_content)
+
     # Concatenar el título con el contenido principal
     final_video = concatenate_videoclips(
         [title_video, main_content],

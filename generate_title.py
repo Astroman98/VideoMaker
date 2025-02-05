@@ -1,5 +1,6 @@
 from moviepy import TextClip, CompositeVideoClip, VideoFileClip, AudioFileClip
 from moviepy import VideoFileClip, vfx
+from moviepy import CompositeAudioClip
 import edge_tts
 import asyncio
 import os
@@ -9,6 +10,8 @@ from moviepy import concatenate_audioclips
 import numpy as np
 from moviepy.video.fx.FadeOut import FadeOut  # Importar las clases correctas
 from moviepy.video.fx.FadeIn import FadeIn
+from moviepy.audio.fx.AudioFadeIn import AudioFadeIn
+from moviepy.audio.fx.AudioFadeOut import AudioFadeOut
 
 
 
@@ -48,6 +51,26 @@ async def generate_title_video(
     
     # Duración total: audio + 1 segundo de silencio
     duration = combined_audio.duration
+
+
+    # Cargar y preparar la música de fondo
+    background_music = AudioFileClip("music/intro_sound.mp3")
+
+    # Ajustar la duración de la música al video
+    if background_music.duration > duration:
+        background_music = background_music.subclipped(0, duration)
+
+
+    # Crear y aplicar los efectos de fade al audio
+    audio_fadein = AudioFadeIn(1.5).copy()
+    audio_fadeout = AudioFadeOut(0.8).copy()
+
+    # Reducir el volumen de la música (este clip ya esta lo suficientemente bajo, pero si quieres ajustarlo puedes hacerlo)
+    #background_music = background_music.volumex(0.3)  # 30% del volumen original
+
+    background_music = audio_fadein.apply(background_music)
+    background_music = audio_fadeout.apply(background_music)
+
     
     # Recortar el video de fondo si es necesario
     background = background.subclipped(0, duration)
@@ -65,6 +88,9 @@ async def generate_title_video(
         size=(resolution[0] - 100, None)
     ).with_position('center')
     
+
+    # Agregar el audio
+    final_audio = CompositeAudioClip([combined_audio, background_music])
     # En generate_title.py, modifica la parte donde se aplican los efectos:
 
     # Crear la composición final
@@ -73,12 +99,12 @@ async def generate_title_video(
         size=resolution
     ).with_duration(duration)
     
-    # Agregar el audio
-    final_clip = final_clip.with_audio(combined_audio)
+    # Agregar el audio combinado (tanto música como voz)
+    final_clip = final_clip.with_audio(final_audio)
 
     # Crear y aplicar los efectos de fade
     fade_in = FadeIn(1.5).copy()  # 2 segundos de fade in
-    fade_out = FadeOut(0.5).copy()  # 2 segundos de fade out
+    fade_out = FadeOut(0.8).copy()  # 2 segundos de fade out
     
     final_clip = fade_in.apply(final_clip)
     final_clip = fade_out.apply(final_clip)
