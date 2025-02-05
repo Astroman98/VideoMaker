@@ -11,6 +11,9 @@ from generate_title import generate_title_video
 from moviepy import concatenate_videoclips
 from moviepy.video.fx.CrossFadeIn import CrossFadeIn
 from moviepy.video.fx.CrossFadeOut import CrossFadeOut
+from moviepy.audio.fx.AudioFadeIn import AudioFadeIn
+from moviepy.audio.fx.AudioFadeOut import AudioFadeOut
+from moviepy import CompositeAudioClip
 
 
 def split_sentences(texto):
@@ -198,9 +201,9 @@ async def main():
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
-       """ Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio.
----
+       """ Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio. necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio.
 
+Ah, y necesitas conocer estos apretones de manos y señales para. Ah, y necesitas conocer estos apretones de manos y señales para.
 
  """
     )
@@ -227,8 +230,6 @@ async def main():
             # Si no es el último segmento, insertar la transición (video de transicion_1)
             if seg_index < len(segments) - 1:
                 transition_clip = VideoFileClip("video/transicion_1.mp4").resized(res).with_start(current_time)
-                # Importar las clases de efecto
-
 
                 # Crear copias de los efectos con una duración de 0.5 segundos
                 fadein_effect = CrossFadeIn(0.3).copy()
@@ -257,15 +258,37 @@ async def main():
         [final_bg] + overlays,
         size=res
     ).with_duration(total_duration)
+
+    background_music = AudioFileClip("music/pigletOST.mp3")
+
+    if background_music.duration > total_duration:
+        background_music = background_music.subclipped(0, total_duration)
+
+    audio_fadein = AudioFadeIn(1.5).copy()
+    audio_fadeout = AudioFadeOut(0.8).copy()
+
+    background_music = audio_fadein.apply(background_music)
+    background_music = audio_fadeout.apply(background_music)
+
+    #Aquí puedes configurar el volumen de la música de fondo
+    from moviepy.audio.fx.MultiplyVolume import MultiplyVolume
+    # Reducir el volumen de la música de fondo
+    volume_effect = MultiplyVolume(0.06).copy()
+    background_music = volume_effect.apply(background_music)
+
     
     # Agregar el audio al contenido principal
-    final_audio = concatenate_audioclips(audio_segments)
+    main_audio = concatenate_audioclips(audio_segments)
+    final_audio = CompositeAudioClip([main_audio, background_music])
     main_content = main_content.with_audio(final_audio)
 
-    #Aplicar fade in al contenido principal
+    #Aplicar fade in y fade out al contenido principal
     from moviepy.video.fx.FadeIn import FadeIn
+    from moviepy.video.fx.FadeOut import FadeOut
     fade_in1 = FadeIn(1.5).copy()
+    fade_out1 = FadeOut(1.5).copy()
     main_content = fade_in1.apply(main_content)
+    main_content = fade_out1.apply(main_content)
 
     # Concatenar el título con el contenido principal
     final_video = concatenate_videoclips(
