@@ -31,7 +31,7 @@ async def generate_audio_for_sentence(sentence, output_file, voz="es-US-AlonsoNe
     También se añade un ajuste de velocidad (rate).
     """
     # En este ejemplo se añade rate="+7%" para aumentar la velocidad
-    comunicador = edge_tts.Communicate(text=sentence, voice=voz, rate="+7%")
+    comunicador = edge_tts.Communicate(text=sentence, voice=voz, rate="+8%")
     await comunicador.save(output_file)
     print(f"Audio guardado: {output_file}")
 
@@ -261,8 +261,8 @@ async def main():
     # Calcular la duración total incluyendo el silencio
     total_duration_with_silence = total_duration + silence_duration
 
-    # Cargar el video del título y asegurar que tenga la misma resolución
-    title_video = VideoFileClip("title.mp4").resized(res)
+    # En main.py, cuando cargas el video del título
+    title_video = VideoFileClip("title.mp4").resized(res).subclipped(0, -0.05)  # Quitar los últimos 0.05 segundos
     
     # Crear el contenido principal (sin crear un nuevo CompositeVideoClip)
     final_bg = main_bg.subclipped(0, total_duration_with_silence)
