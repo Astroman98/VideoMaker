@@ -7,7 +7,7 @@ from moviepy import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip, 
 from moviepy import concatenate_audioclips
 import edge_tts
 from moviepy.audio.AudioClip import AudioArrayClip
-from generate_title import generate_title_video
+from generate_titleeng import generate_title_video
 from moviepy import concatenate_videoclips
 from moviepy.video.fx.CrossFadeIn import CrossFadeIn
 from moviepy.video.fx.CrossFadeOut import CrossFadeOut
@@ -25,14 +25,14 @@ def split_sentences(texto):
     """
     return re.split(r'(?<=[?]|(?<!\.)\.(?!\.))\s+', texto.strip())
 
-async def generate_audio_for_sentence(sentence, output_file, voz="es-US-AlonsoNeural"):
+async def generate_audio_for_sentence(sentence, output_file, voz="en-US-ChristopherNeural"):
     """
     Genera el audio TTS para una oración y lo guarda en output_file.
     Opciones de voz: es-US-AlonsoNeural, en-US-ChristopherNeural, etc.
     También se añade un ajuste de velocidad (rate).
     """
     # En este ejemplo se añade rate="+7%" para aumentar la velocidad
-    comunicador = edge_tts.Communicate(text=sentence, voice=voz, rate="+8%")
+    comunicador = edge_tts.Communicate(text=sentence, voice=voz)
     await comunicador.save(output_file)
     print(f"Audio guardado: {output_file}")
 
@@ -81,7 +81,7 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
     )
     
     # Calculamos la altura de dos líneas y la altura total del texto
-    line_height = font_size * 1  # Aproximación del alto de línea con espaciado, anteriormente era 1.2
+    line_height = font_size * 1.1  # Aproximación del alto de línea con espaciado, anteriormente era 1.2
     two_lines_height = line_height * 2
     text_height = temp_clip.h
     
@@ -105,7 +105,7 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
         
         def scroll_position(t):
             # Esperar 1 segundo antes de comenzar el scroll
-            if t < 1.2:
+            if t < 1.4:
                 return 0
             # Usar el tiempo restante para el scroll
             remaining_time = duration - 1.2
@@ -129,13 +129,13 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
         ).with_duration(duration)
         
         # Posicionar el contenedor más arriba en el video
-        bottom_margin = 80  # Ajustar este valor según sea necesario
+        bottom_margin = 90  # Ajustar este valor según sea necesario
         final_clip = container.with_position(('center', res[1] - bottom_margin - two_lines_height))
         
     else:
         # Para textos de dos líneas o menos, simplemente centramos sin scroll
         # También ajustamos la posición vertical para mantener consistencia
-        bottom_margin = 80
+        bottom_margin = 90
         final_clip = temp_clip.with_position(('center', res[1] - bottom_margin - two_lines_height))
     
     return final_clip.with_duration(duration)
@@ -214,7 +214,7 @@ async def main():
     silence_duration = 2
 
     await generate_title_video(
-    text="Exmiembros",
+    text="Test",
     resolution=res
     )
     
@@ -224,10 +224,8 @@ async def main():
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
-       """ Crecí como Testigo de Jehová y finalmente "me alejé" galrededor de los. En ese entonces no pensaba que fuera una secta, solo creía que gestaban yequivocados en su forma de ver las cosas, No tenían respuestas para mis preguntas, y sabía por mi mamá que habían predicho el fin del mundo docenas de veces, y todas habían fallado. 
-
-Así que exploré otras religiones, terminando en la de mi mejor amigo: los mormones (o llamados como la Iglesia de Jesucristo de los Santos de los Últimos Días). Al principio, solo parecía un poco raro por el nuevo libro de escrituras y la casi adoración al fundador, Joseph Smith.
-
+       """ 
+I was 13 when my parents kicked me out and told me they. No longer wanted anything to do with me. I was terrified to go to a shelter because I had known some foster kids, and the whole system scared me, Plus, I wanted to continue going to the same school—I did not want to lose my friends too. At that age, the scariest part was figuring out what I was going to eat. --- There was a dilapidated trailer just minutes down the road from my dad’s place.
 
  """
     )
@@ -276,7 +274,7 @@ Así que exploré otras religiones, terminando en la de mi mejor amigo: los morm
             current_time += seg_duration
             # Si no es el último segmento, insertar la transición (video de transicion_1)
             if seg_index < len(segments) - 1:
-                transition_clip = VideoFileClip("video/transicion_4.mp4").resized(res).with_start(current_time)
+                transition_clip = VideoFileClip("video/transition_3.mp4").resized(res).with_start(current_time)
 
                 # Crear copias de los efectos con una duración de 0.5 segundos
                 fadein_effect = CrossFadeIn(0.3).copy()
@@ -310,7 +308,7 @@ Así que exploré otras religiones, terminando en la de mi mejor amigo: los morm
     total_duration_with_silence = total_duration + silence_duration
 
     # En main.py, cuando cargas el video del título
-    title_video = VideoFileClip("title(esp).mp4").resized(res).subclipped(0, -0.05)  # Quitar los últimos 0.05 segundos
+    title_video = VideoFileClip("title(eng).mp4").resized(res).subclipped(0, -0.05)  # Quitar los últimos 0.05 segundos
     
     # Crear el contenido principal (sin crear un nuevo CompositeVideoClip)
     final_bg = main_bg.subclipped(0, total_duration_with_silence)
@@ -356,9 +354,12 @@ Así que exploré otras religiones, terminando en la de mi mejor amigo: los morm
         method="compose"  # Usar compose en lugar del método por defecto
     )
     
+
+
+
     # Exportar el video final
     final_video.write_videofile(
-        "video_con_audio_y_subtitulos(esp).mp4",
+        "video_con_audio_y_subtitulos(eng).mp4",
         fps=60,
         #fps=24,  # Reducido para renderizado más rápido
         codec="libx264",  # Volver a libx264 que es más compatible

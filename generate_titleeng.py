@@ -20,7 +20,7 @@ async def generate_title_video(
     resolution=(1920, 1080),
     font_size=140,
     font_color='#cfcfcf',
-    voz="es-US-AlonsoNeural",
+    voz="en-US-ChristopherNeural",
 ):
     """
     Genera un video con un título sobre un video de fondo,
@@ -113,7 +113,7 @@ async def generate_title_video(
     
     # Guardar el video
     final_clip.write_videofile(
-        "title(esp).mp4",  # o "video_con_audio_y_subtitulos.mp4" en main.py
+        "title(eng).mp4",  # o "video_con_audio_y_subtitulos.mp4" en main.py
         fps=60,
         codec="libx264",  # Volver a libx264 que es más compatible
         bitrate="8000k",
