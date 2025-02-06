@@ -105,10 +105,10 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
         
         def scroll_position(t):
             # Esperar 1 segundo antes de comenzar el scroll
-            if t < 1.4:
+            if t < 1.6:
                 return 0
             # Usar el tiempo restante para el scroll
-            remaining_time = duration - 1.2
+            remaining_time = duration - 1.6
             # Dejar 0.3s al final
             scroll_time = remaining_time - 0.3
             # Calcular la posición del scroll con velocidad ajustada
@@ -225,7 +225,21 @@ async def main():
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
        """ 
-I was 13 when my parents kicked me out and told me they. No longer wanted anything to do with me. I was terrified to go to a shelter because I had known some foster kids, and the whole system scared me, Plus, I wanted to continue going to the same school—I did not want to lose my friends too. At that age, the scariest part was figuring out what I was going to eat. --- There was a dilapidated trailer just minutes down the road from my dad’s place.
+I was 13 when my parents kicked me out and told me they no longer wanted anything to do with me. I was terrified to go to a shelter because I had known some foster kids, and the whole system scared me. Plus, I wanted to continue going to the same school—I did not want to lose my friends too. At that age, the scariest part was figuring out what I was going to eat. There was a dilapidated trailer just minutes down the road from my dad’s place, so I stayed there.
+
+I do not think it all really hit me until one night when I had to choose between food and blankets because the temperature was expected to drop into the mid-30s, and I only had one thin blanket at the time. The next day, I put on my best attire, which was nothing impressive, and asked for a job at Long John Silver’s. I lied and told them I was 15. I worked five days a week, rushing over after school.
+---
+I ate more unhealthy food than I ever have since to save money for some form of shelter, which eventually came in the form of a 1991 Toyota Camry I purchased from the Thrifty Nickel for $300. I loved that clunker, and staying warm became much easier.
+
+From there, it was mostly uphill. I found an older lady willing to rent me her garage without a credit check. I took a couch off the side of the road to sleep on. I even had internet in there, where I mostly read scary stories all night (I wish video streaming services were really a thing back then). I just kind of learned to roll with the punches.
+---
+My childhood was not normal—it was downright terrifying much of the time—but it is what made me who I am today.
+
+
+---
+I was only homeless for about six weeks, at 36 years of age. After several years of depression and anxiety slowly eroding my resources, relationships, and general will to try anymore, I ended up having a final blowout with my girlfriend, who, reasonably, could not handle me anymore.
+
+I started sleeping at work, which was not even a full-time job.
 
  """
     )
@@ -236,16 +250,18 @@ I was 13 when my parents kicked me out and told me they. No longer wanted anythi
 
     # Separar el texto en segmentos usando el separador '---'
     segments = re.split(r'\n?\s*---+\s*\n?', texto.strip())
-    total_duration = 0
     print(f"Se encontraron {len(segments)} segmento(s).")
     
-# Calcular la duración total necesaria
-    for seg in segments:
+    # Lista para almacenar los resultados del procesamiento
+    processed_segments = []
+    total_duration = 0
+
+    # Procesar todos los segmentos una sola vez
+    for i, seg in enumerate(segments):
         if seg.strip():
-            _, seg_audio, seg_duration = await process_segment(seg, res, 0)
+            text_clips, seg_audio, seg_duration = await process_segment(seg, res, i)
+            processed_segments.append((text_clips, seg_audio, seg_duration))
             total_duration += seg_duration
-            # Liberamos el audio para no consumir memoria
-            seg_audio.close()
 
 
     # Agregar duración del silencio final
@@ -261,32 +277,29 @@ I was 13 when my parents kicked me out and told me they. No longer wanted anythi
     audio_segments = [] # Acumular los clips de audio de cada segmento (con tiempos absolutos)
     current_time = 0    # Tiempo acumulado en la línea de tiempo final
     
-    for seg_index, seg in enumerate(segments):
-        if seg.strip():
-            # Procesar el segmento: se obtiene la lista de TextClips (con tiempos relativos),
-            # el audio concatenado del segmento y la duración total del segmento.
-            text_clips, seg_audio, seg_duration = await process_segment(seg, res, seg_index)
-            # Ubicar cada TextClip en la línea de tiempo (sumando current_time al inicio relativo)
+    # Usar los segmentos ya procesados
+    for seg_index, (text_clips, seg_audio, seg_duration) in enumerate(processed_segments):
+            # Ubicar cada TextClip en la línea de tiempo
             for clip in text_clips:
                 overlays.append(clip.with_start(current_time + clip.start))
+            
             # Ubicar el audio del segmento en la línea de tiempo
             audio_segments.append(seg_audio.with_start(current_time))
             current_time += seg_duration
-            # Si no es el último segmento, insertar la transición (video de transicion_1)
+            # Si no es el último segmento, insertar la transición
             if seg_index < len(segments) - 1:
-                transition_clip = VideoFileClip("video/transition_3.mp4").resized(res).with_start(current_time)
+                transition_clip = VideoFileClip("video/transicion_4.mp4").resized(res).with_start(current_time)
 
-                # Crear copias de los efectos con una duración de 0.5 segundos
+                # Crear copias de los efectos
                 fadein_effect = CrossFadeIn(0.3).copy()
                 fadeout_effect = CrossFadeOut(0.3).copy()
 
-                # Aplicar el efecto de fade in y luego el de fade out
+                # Aplicar efectos de fade
                 transition_clip = fadein_effect.apply(transition_clip)
                 transition_clip = fadeout_effect.apply(transition_clip)
 
-                # Agregar el clip de transición (con sus efectos) a la lista de overlays
+                # Agregar clips a las listas
                 overlays.append(transition_clip)
-                # Si el clip de transición tiene audio, agregarlo a la lista de audios
                 if transition_clip.audio is not None:
                     audio_segments.append(transition_clip.audio.with_start(current_time))
                 current_time += transition_clip.duration
@@ -368,7 +381,7 @@ I was 13 when my parents kicked me out and told me they. No longer wanted anythi
         audio_codec="aac",
         audio_bitrate="320k",
         #audio_bitrate="128k",
-        preset="faster",  # Usar 'faster' en lugar de 'slow' para mejor velocidad
+        preset="slow",  # Usar 'faster' en lugar de 'slow' para mejor velocidad
         threads=8,  # Aumentar el número de threads
         ffmpeg_params=[
             #"-crf", "20",
@@ -381,9 +394,21 @@ I was 13 when my parents kicked me out and told me they. No longer wanted anythi
     )
     print("Video final guardado")
     
-    # Cerrar todos los clips
+# Cerrar todos los clips
     main_bg.close()
     title_video.close()
+    
+    # Limpiar los segmentos procesados
+    for _, seg_audio, _ in processed_segments:
+        seg_audio.close()
+    
+    # Limpiar archivos de audio temporales
+    for file in os.listdir("audio"):
+        if file.endswith(".mp3"):
+            try:
+                os.remove(os.path.join("audio", file))
+            except Exception as e:
+                print(f"Error al eliminar archivo temporal {file}: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
