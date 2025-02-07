@@ -18,12 +18,49 @@ import random
 
 
 def split_sentences(texto):
+   """
+   Separa el texto en oraciones sin dividir las comillas de cierre.
+   """
+   partes = []
+   texto_actual = texto.strip()
+   
+   while texto_actual:
+       match_punto_comilla = texto_actual.find('."')
+       match_punto_interrogacion = texto_actual.find('?"')
+       match_interrogacion = texto_actual.find('?')
+       match_punto = texto_actual.find('. ')
+       
+       indices = []
+       if match_punto_comilla != -1:
+           indices.append(match_punto_comilla + 2)
+       if match_punto_interrogacion != -1:
+           indices.append(match_punto_interrogacion + 2)
+       elif match_interrogacion != -1:  # Solo si no encontramos ?"
+           indices.append(match_interrogacion + 1)
+       if match_punto != -1:
+           if not texto_actual[match_punto-2:match_punto+1] == '...':
+               indices.append(match_punto + 1)
+       
+       if not indices:
+           if texto_actual:
+               partes.append(texto_actual)
+           break
+           
+       primer_match = min(indices)
+       partes.append(texto_actual[:primer_match])
+       texto_actual = texto_actual[primer_match:].strip()
+   
+   return [p for p in partes if p]
+
+''' def split_sentences(texto):
     """
     Separa el texto en oraciones usando como delimitadores:
       - Un signo de interrogación (?)
       - Un punto (.) que no forme parte de una elipsis ("...").
     """
-    return re.split(r'(?<=[?]|(?<!\.)\.(?!\.))\s+', texto.strip())
+    return re.split(r'(?<=[?]|(?<!\.)\.(?!\.)(?!"))\s+', texto.strip())
+ '''
+
 
 async def generate_audio_for_sentence(sentence, output_file, voz="en-US-ChristopherNeural"):
     """
@@ -44,7 +81,7 @@ async def generate_all_audios(sentences, seg_index):
     audio_files = []
     os.makedirs("audio", exist_ok=True)
     for i, sentence in enumerate(sentences):
-        file_path = f"audio/seg{seg_index}_sentence_{i}.mp3"
+        file_path = f"audio/engseg{seg_index}_sentence_{i}.mp3"
         await generate_audio_for_sentence(sentence, file_path)
         audio_files.append(file_path)
     return audio_files
@@ -105,14 +142,14 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
         
         def scroll_position(t):
             # Esperar 1 segundo antes de comenzar el scroll
-            if t < 1.6:
+            if t < 1.8:
                 return 0
             # Usar el tiempo restante para el scroll
-            remaining_time = duration - 1.6
+            remaining_time = duration - 1.8
             # Dejar 0.3s al final
             scroll_time = remaining_time - 0.3
             # Calcular la posición del scroll con velocidad ajustada
-            progress = min(1, ((t - 1) / scroll_time) * scroll_speed)
+            progress = min(1, ((t - 1.8) / scroll_time) * scroll_speed)
             # Asegurarnos de que el scroll llegue hasta el final del texto
             return progress * scroll_distance
         
@@ -160,7 +197,7 @@ async def process_segment(segment_text, res, seg_index):
     
     for file in audio_files:
         clip = AudioFileClip(file)
-        new_duration = clip.duration - 0.5 if clip.duration > 0.5 else clip.duration
+        new_duration = clip.duration - 0.8 if clip.duration > 0.8 else clip.duration
         clip = clip.subclipped(0, new_duration)
         audio_clips.append(clip)
         durations.append(new_duration)
@@ -225,21 +262,9 @@ async def main():
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
        """ 
-I was 13 when my parents kicked me out and told me they no longer wanted anything to do with me. I was terrified to go to a shelter because I had known some foster kids, and the whole system scared me. Plus, I wanted to continue going to the same school—I did not want to lose my friends too. At that age, the scariest part was figuring out what I was going to eat. There was a dilapidated trailer just minutes down the road from my dad’s place, so I stayed there.
+"At your age, we got up at 4 AM to work on the farm, After the job, we went home to have lunch with your grandfather, then we walked 10 km to go to school, When we got back, we worked in the field on a tractor until 6 p.m., then we cooked dinner for your grandfather."
 
-I do not think it all really hit me until one night when I had to choose between food and blankets because the temperature was expected to drop into the mid-30s, and I only had one thin blanket at the time. The next day, I put on my best attire, which was nothing impressive, and asked for a job at Long John Silver’s. I lied and told them I was 15. I worked five days a week, rushing over after school.
----
-I ate more unhealthy food than I ever have since to save money for some form of shelter, which eventually came in the form of a 1991 Toyota Camry I purchased from the Thrifty Nickel for $300. I loved that clunker, and staying warm became much easier.
-
-From there, it was mostly uphill. I found an older lady willing to rent me her garage without a credit check. I took a couch off the side of the road to sleep on. I even had internet in there, where I mostly read scary stories all night (I wish video streaming services were really a thing back then). I just kind of learned to roll with the punches.
----
-My childhood was not normal—it was downright terrifying much of the time—but it is what made me who I am today.
-
-
----
-I was only homeless for about six weeks, at 36 years of age. After several years of depression and anxiety slowly eroding my resources, relationships, and general will to try anymore, I ended up having a final blowout with my girlfriend, who, reasonably, could not handle me anymore.
-
-I started sleeping at work, which was not even a full-time job.
+And I was like, "Yeah, but... he didn't work the farm with you in the morning?" Hello, he didnt do it.
 
  """
     )
@@ -369,7 +394,34 @@ I started sleeping at work, which was not even a full-time job.
     
 
 
+    '''
+            # Antes del write_videofile, redimensiona el video (SOLO APLICA CUANDO HACES TESTEOS)
+        final_video = final_video.resized(width=426, height=240)
 
+        final_video.write_videofile(
+        "video_con_audio_y_subtitulos(eng).mp4",
+        fps=24,
+        codec="libx264",
+        bitrate="500k",
+        audio_codec="aac", 
+        audio_bitrate="64k",
+        preset="ultrafast",
+        threads=8,
+        ffmpeg_params=[
+            "-crf", "35",
+            "-profile:v", "baseline",
+            "-level", "3.0",
+            "-pix_fmt", "yuv420p",
+            "-tune", "fastdecode",
+            "-movflags", "+faststart",
+            "-maxrate", "600k",
+            "-bufsize", "1000k"
+        ]
+        )
+    '''
+
+
+    
     # Exportar el video final
     final_video.write_videofile(
         "video_con_audio_y_subtitulos(eng).mp4",
@@ -397,22 +449,42 @@ I started sleeping at work, which was not even a full-time job.
         ]
     )
     print("Video final guardado")
+
+    
     
 # Cerrar todos los clips
+    print("Cerrando clips de video...")
     main_bg.close()
     title_video.close()
     
+    # Cerrar el audio principal y la música de fondo
+    print("Cerrando clips de audio...")
+    main_audio.close()
+    background_music.close()
+    final_audio.close()
+    
     # Limpiar los segmentos procesados
+    print("Cerrando segmentos procesados...")
     for _, seg_audio, _ in processed_segments:
         seg_audio.close()
     
+    # Esperar un momento para asegurar que todos los archivos se hayan liberado
+    await asyncio.sleep(1)
+    
     # Limpiar archivos de audio temporales
+    print("Limpiando archivos temporales...")
     for file in os.listdir("audio"):
         if file.endswith(".mp3"):
-            try:
-                os.remove(os.path.join("audio", file))
-            except Exception as e:
-                print(f"Error al eliminar archivo temporal {file}: {e}")
+            max_attempts = 3
+            for attempt in range(max_attempts):
+                try:
+                    os.remove(os.path.join("audio", file))
+                    break
+                except Exception as e:
+                    if attempt == max_attempts - 1:
+                        print(f"Error al eliminar archivo temporal {file}: {str(e)}")
+                    else:
+                        await asyncio.sleep(0.5)  # Esperar medio segundo antes de reintentar
 
 if __name__ == "__main__":
     asyncio.run(main())

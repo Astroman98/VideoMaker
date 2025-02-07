@@ -30,7 +30,7 @@ async def generate_title_video(
     os.makedirs("audio", exist_ok=True)
     
     # Generar el audio TTS
-    audio_file = "audio/title_audio.mp3"
+    audio_file = "audio/eng_title_audio.mp3"
     comunicador = edge_tts.Communicate(text=text, voice=voz, rate="+7%")
     await comunicador.save(audio_file)
     

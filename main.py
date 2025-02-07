@@ -18,12 +18,49 @@ import random
 
 
 def split_sentences(texto):
+   """
+   Separa el texto en oraciones sin dividir las comillas de cierre.
+   """
+   partes = []
+   texto_actual = texto.strip()
+   
+   while texto_actual:
+       match_punto_comilla = texto_actual.find('."')
+       match_punto_interrogacion = texto_actual.find('?"')
+       match_interrogacion = texto_actual.find('?')
+       match_punto = texto_actual.find('. ')
+       
+       indices = []
+       if match_punto_comilla != -1:
+           indices.append(match_punto_comilla + 2)
+       if match_punto_interrogacion != -1:
+           indices.append(match_punto_interrogacion + 2)
+       elif match_interrogacion != -1:  # Solo si no encontramos ?"
+           indices.append(match_interrogacion + 1)
+       if match_punto != -1:
+           if not texto_actual[match_punto-2:match_punto+1] == '...':
+               indices.append(match_punto + 1)
+       
+       if not indices:
+           if texto_actual:
+               partes.append(texto_actual)
+           break
+           
+       primer_match = min(indices)
+       partes.append(texto_actual[:primer_match])
+       texto_actual = texto_actual[primer_match:].strip()
+   
+   return [p for p in partes if p]
+
+'''
+def split_sentences(texto):
     """
     Separa el texto en oraciones usando como delimitadores:
       - Un signo de interrogación (?)
       - Un punto (.) que no forme parte de una elipsis ("...").
     """
-    return re.split(r'(?<=[?]|(?<!\.)\.(?!\.))\s+', texto.strip())
+    return re.split(r'(?<=[?]|(?<!\.)\.(?!\.)(?!"))\s+', texto.strip())
+'''
 
 async def generate_audio_for_sentence(sentence, output_file, voz="es-US-AlonsoNeural"):
     """
@@ -104,16 +141,16 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
         scroll_distance = text_height - two_lines_height
         
         def scroll_position(t):
-            # Esperar 1 segundo antes de comenzar el scroll
-            if t < 1.2:
+            # Esperar 2 segundos antes de comenzar el scroll
+            if t < 2:
                 return 0
             # Usar el tiempo restante para el scroll
-            remaining_time = duration - 1.2
+            remaining_time = duration - 2
             # Dejar 0.3s al final
             scroll_time = remaining_time - 0.3
             # Calcular la posición del scroll con velocidad ajustada
-            progress = min(1, ((t - 1) / scroll_time) * scroll_speed)
-            # Asegurarnos de que el scroll llegue hasta el final del texto
+            progress = min(1, ((t - 2) / scroll_time) * scroll_speed)  # Cambiado t-1 a t-2
+            # Retornar la posición sin el negativo
             return progress * scroll_distance
         
         # Posicionar el texto dentro del contenedor
@@ -160,7 +197,7 @@ async def process_segment(segment_text, res, seg_index):
     
     for file in audio_files:
         clip = AudioFileClip(file)
-        new_duration = clip.duration - 0.5 if clip.duration > 0.5 else clip.duration
+        new_duration = clip.duration - 0.7 if clip.duration > 0.7 else clip.duration
         clip = clip.subclipped(0, new_duration)
         audio_clips.append(clip)
         durations.append(new_duration)
@@ -214,7 +251,7 @@ async def main():
     silence_duration = 2
 
     await generate_title_video(
-    text="Exmiembros de sectas, ¿en qué momento pensaron: 'oh mierda, estoy en una secta'?",
+    text="Exmiembros",
     resolution=res
     )
     
@@ -224,17 +261,10 @@ async def main():
     
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
-       """ Crecí como Testigo de Jehová y finalmente "me alejé" alrededor de los 14 años. En ese entonces no pensaba que fuera una secta, solo creía que estaban equivocados en su forma de ver las cosas. No tenían respuestas para mis preguntas, y sabía por mi mamá que habían predicho el fin del mundo docenas de veces, y todas habían fallado. 
+       """ "A tu edad, nos levantábamos a las 4 de la mañana para trabajar en la granja, después del trabajo volvíamos a casa para almorzar con tu abuelo, luego caminábamos 10 kilómetros para ir a la escuela, y cuando regresábamos, trabajábamos en el campo con el tractor hasta las 6 de la tarde, para luego cocinar la cena para tu abuelo."
 
-Así que exploré otras religiones, terminando en la de mi mejor amigo: los mormones (o llamados como la Iglesia de Jesucristo de los Santos de los Últimos Días). Al principio, solo parecía un poco raro por el nuevo libro de escrituras y la casi adoración al fundador, Joseph Smith.
+"Las cosas empezaron a acumularse?" Dudo que lo haya hecho, porque es asi.
 
-Las cosas empezaron a acumularse. Las reuniones empresariales estilo corporativo con el Quórum de los Setenta, los himnos de la Primaria (para niños) con propaganda intensa ("Sigue al profeta, él conoce el camino"), y hasta la estricta separación de hombres y mujeres durante el culto.
----
-Luego conocí a una chica mormona agradable, decidimos casarnos y fui al templo por primera vez. Es difícil describir lo sectario que se siente.
-
-Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo con una especie de poncho, como una faja ancha abierta por ambos lados, y un hombre te toca la rodilla, el vientre y la cabeza con óleo consagrado. Después, te pones las prendas del templo, un conjunto de ropa interior que prometes usar el resto de tu vida. Encima de eso, llevas túnicas plisadas, un delantal verde y algo que parece un gorro de panadero. Hay una parte en la que te paras y cantas al unísono: "Oh Señor, escucha las palabras de mi boca". Oh mierda, estoy en una secta.
-
----
 
  """
     )
@@ -361,6 +391,32 @@ Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo c
         method="compose"  # Usar compose en lugar del método por defecto
     )
     
+    '''
+    # Antes del write_videofile, redimensiona el video (SOLO APLICA CUANDO HACES TESTEOS)
+    final_video = final_video.resized(width=426, height=240)
+
+    final_video.write_videofile(
+    "video_con_audio_y_subtitulos(esp).mp4",
+    fps=24,
+    codec="libx264",
+    bitrate="500k",
+    audio_codec="aac", 
+    audio_bitrate="64k",
+    preset="ultrafast",
+    threads=8,
+    ffmpeg_params=[
+        "-crf", "35",
+        "-profile:v", "baseline",
+        "-level", "3.0",
+        "-pix_fmt", "yuv420p",
+        "-tune", "fastdecode",
+        "-movflags", "+faststart",
+        "-maxrate", "600k",
+        "-bufsize", "1000k"
+    ]
+    )
+    '''
+    
     # Exportar el video final
     final_video.write_videofile(
         "video_con_audio_y_subtitulos(esp).mp4",
@@ -388,22 +444,42 @@ Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo c
         ]
     )
     print("Video final guardado")
-    
+
+
+
 # Cerrar todos los clips
+    print("Cerrando clips de video...")
     main_bg.close()
     title_video.close()
     
+    # Cerrar el audio principal y la música de fondo
+    print("Cerrando clips de audio...")
+    main_audio.close()
+    background_music.close()
+    final_audio.close()
+    
     # Limpiar los segmentos procesados
+    print("Cerrando segmentos procesados...")
     for _, seg_audio, _ in processed_segments:
         seg_audio.close()
     
+    # Esperar un momento para asegurar que todos los archivos se hayan liberado
+    await asyncio.sleep(1)
+    
     # Limpiar archivos de audio temporales
+    print("Limpiando archivos temporales...")
     for file in os.listdir("audio"):
         if file.endswith(".mp3"):
-            try:
-                os.remove(os.path.join("audio", file))
-            except Exception as e:
-                print(f"Error al eliminar archivo temporal {file}: {e}")
+            max_attempts = 3
+            for attempt in range(max_attempts):
+                try:
+                    os.remove(os.path.join("audio", file))
+                    break
+                except Exception as e:
+                    if attempt == max_attempts - 1:
+                        print(f"Error al eliminar archivo temporal {file}: {str(e)}")
+                    else:
+                        await asyncio.sleep(0.5)  # Esperar medio segundo antes de reintentar
 
 if __name__ == "__main__":
     asyncio.run(main())
