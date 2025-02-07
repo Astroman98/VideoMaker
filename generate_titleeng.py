@@ -109,13 +109,44 @@ async def generate_title_video(
     
     final_clip = fade_in.apply(final_clip)
     final_clip = fade_out.apply(final_clip)
+
+
+    # Exportar el video final
+    final_clip.write_videofile(
+        "title(eng).mp4",
+        fps=60,
+        codec="libx264",
+        bitrate="20000k",  # Aumentado para mejor calidad
+        audio_codec="aac",
+        audio_bitrate="320k",
+        preset="medium",   # Balance entre velocidad y calidad
+        threads=8,
+        ffmpeg_params=[
+            "-crf", "17",  # Menor valor = mejor calidad (rango 0-51)
+            "-profile:v", "high",
+            "-level", "4.2",
+            "-pix_fmt", "yuv420p",
+            "-tune", "film",  # Optimizado para contenido de video
+            "-movflags", "+faststart",  # Mejora la reproducción en streaming
+            "-bf", "2",  # Frames B para mejor compresión
+            "-g", "30",  # GOP size
+            "-keyint_min", "25",  # Mínimo intervalo entre keyframes
+            "-sc_threshold", "40",  # Umbral de detección de cambios de escena
+            "-b_strategy", "1",  # Estrategia de frames B
+            "-qmin", "10",  # Calidad mínima
+            "-qmax", "51",  # Calidad máxima
+        ]
+    )
+
+
     
-    
+    '''
     # Guardar el video
     final_clip.write_videofile(
         "title(eng).mp4",  # o "video_con_audio_y_subtitulos.mp4" en main.py
         fps=60,
-        codec="libx264",  # Volver a libx264 que es más compatible
+        #codec="libx264",
+        codec="h264_nvenc",  # Volver a libx264 que es más compatible
         bitrate="8000k",
         audio_codec="aac",
         audio_bitrate="320k",
@@ -129,7 +160,7 @@ async def generate_title_video(
             "-tune", "fastdecode"  # Optimizar para decodificación rápida
         ]
     )
-    
+    '''
     # Cerrar los clips
     background.close()
     tts_audio.close()

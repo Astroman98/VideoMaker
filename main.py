@@ -125,17 +125,17 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
         # Crear un contenedor del tamaño de dos líneas
         container = CompositeVideoClip(
             [txt_clip],
-            size=(res[0] - 95, int(two_lines_height))
+            size=(res[0] - 100, int(two_lines_height))
         ).with_duration(duration)
         
         # Posicionar el contenedor más arriba en el video
-        bottom_margin = 80  # Ajustar este valor según sea necesario
+        bottom_margin = 100  # Ajustar este valor según sea necesario
         final_clip = container.with_position(('center', res[1] - bottom_margin - two_lines_height))
         
     else:
         # Para textos de dos líneas o menos, simplemente centramos sin scroll
         # También ajustamos la posición vertical para mantener consistencia
-        bottom_margin = 80
+        bottom_margin = 90
         final_clip = temp_clip.with_position(('center', res[1] - bottom_margin - two_lines_height))
     
     return final_clip.with_duration(duration)
@@ -229,38 +229,12 @@ async def main():
 Así que exploré otras religiones, terminando en la de mi mejor amigo: los mormones (o llamados como la Iglesia de Jesucristo de los Santos de los Últimos Días). Al principio, solo parecía un poco raro por el nuevo libro de escrituras y la casi adoración al fundador, Joseph Smith.
 
 Las cosas empezaron a acumularse. Las reuniones empresariales estilo corporativo con el Quórum de los Setenta, los himnos de la Primaria (para niños) con propaganda intensa ("Sigue al profeta, él conoce el camino"), y hasta la estricta separación de hombres y mujeres durante el culto.
-
+---
 Luego conocí a una chica mormona agradable, decidimos casarnos y fui al templo por primera vez. Es difícil describir lo sectario que se siente.
 
 Para mí, comenzó con la ceremonia de Iniciación: estás casi sin ropa, solo con una especie de poncho, como una faja ancha abierta por ambos lados, y un hombre te toca la rodilla, el vientre y la cabeza con óleo consagrado. Después, te pones las prendas del templo, un conjunto de ropa interior que prometes usar el resto de tu vida. Encima de eso, llevas túnicas plisadas, un delantal verde y algo que parece un gorro de panadero. Hay una parte en la que te paras y cantas al unísono: "Oh Señor, escucha las palabras de mi boca". Oh mierda, estoy en una secta.
 
-Tras descubrir el subreddit llamado “exmormon”, finalmente entendí que los Testigos de Jehová también eran una secta.
-
-Al menos la mitad de las cosas en el templo están tomadas directamente de los masones, incluyendo la vestimenta, los apretones de manos y las contraseñas. Ah, y necesitas conocer estos apretones de manos y señales para entrar al cielo. Obvio.
 ---
-
-Tuve un accidente cuando tenía doce años que me lesionó la espalda. Sentarme me dolía. Logré convencer a mi madre de que me dejara caminar durante los servicios de varias horas en la biblioteca/cuarto de conferencias en el piso de abajo, donde había un altavoz que transmitía todo lo que pasaba en el púlpito.
-
-En esa biblioteca estaban todas las publicaciones originales de la secta, de más de ochenta años atrás. Nadie les prestaba atención, pero yo era un lector voraz. Descubrí que al principio creían en cosas totalmente ridículas que contradecían por completo las enseñanzas actuales: poderes de las pirámides, numerología… pura locura. Nunca dije nada porque era una organización cerrada y cuestionar significaba ser completamente excluido, pero desde ese momento supe que todo era basura y pasé el resto del tiempo planeando mi escape.
-
-Cuando finalmente decidí hablar públicamente y llamar a todo esto una mentira, seis años después, lo perdí todo y a todos. La vida fue dura por un tiempo, pero 10 de 10 lo haría de nuevo.
-
-No abras la puerta cuando los testigos de Jehová toquen, especialmente si tienes hijos.
-Están ocultando a decenas de miles de pervertidos en sus filas.
-Malditos fanáticos del juicio final.
----
-Lo mío no encaja con la definición típica de una secta, pero me di cuenta de que los testigos de Jehová eran bastante delirantes cuando tenía unos 12 o 13 años. Me tomó unos años más escapar, porque mi padre era anciano en la congregación y no tenía problema en usar la fuerza física para obligarme a ir a las reuniones y a predicar de puerta en puerta. Suena como un escenario falso y exagerado, pero tuve que ser lo suficientemente fuerte como para pelear con él.
-
-A los 17 años, mientras aún estaba en el último año de secundaria, me pidieron que me fuera de la casa. Así que lo hice. Tenía un trabajo y un amigo mayor con quien vivir.
-
-Fue en ese momento cuando me di cuenta de que era una secta. Que un padre pudiera darle la espalda a su propio hijo solo porque no creía en lo mismo. Que pudiera maltratarlo porque estaba siendo acosado en la escuela y ya no soportaba ir a tocar puertas en su propio vecindario, donde se encontraba con sus compañeros de clase en sus casas o andando en bicicleta en una soleada mañana de sábado, mientras yo caminaba con mi padre, con un traje y corbata, llevando un maletín lleno de divagaciones fanáticas sobre vivir para siempre.
-
-
-
----
-Una vez, mi prima me invitó a una supuesta reunión juvenil cristiana. No tenía muchas ganas de ir, pero insistió tanto que terminé aceptando. La reunión se hizo en un pequeño apartamento, y cuando llegamos, nos recibieron los líderes del grupo, que parecían jóvenes totalmente normales.
-
-Luego llegaron los demás miembros y apagaron todas las luces del lugar. Me pareció extraño, pero no le di mucha importancia. Entonces empezó la música. Pusieron esas canciones de rock cristiano que suelen usar en grupos juveniles, pero lo raro fue que empezaron a bailar como locos, saltando por todas partes, agitando los brazos, y lo más extraño de todo: riendo sin control.
 
  """
     )
@@ -391,22 +365,26 @@ Luego llegaron los demás miembros y apagaron todas las luces del lugar. Me pare
     final_video.write_videofile(
         "video_con_audio_y_subtitulos(esp).mp4",
         fps=60,
-        #fps=24,  # Reducido para renderizado más rápido
-        codec="libx264",  # Volver a libx264 que es más compatible
-        bitrate="8000k",
-        #bitrate="1000k",
+        codec="libx264",
+        bitrate="20000k",  # Aumentado para mejor calidad
         audio_codec="aac",
         audio_bitrate="320k",
-        #audio_bitrate="128k",
-        preset="slow",  # Usar 'faster' en lugar de 'slow' para mejor velocidad
-        threads=8,  # Aumentar el número de threads
+        preset="medium",   # Balance entre velocidad y calidad
+        threads=8,
         ffmpeg_params=[
-            #"-crf", "20",
-            "-crf", "28",  # Un poco más alto que 17 para mejor velocidad, aún buena calidad
+            "-crf", "17",  # Menor valor = mejor calidad (rango 0-51)
             "-profile:v", "high",
             "-level", "4.2",
             "-pix_fmt", "yuv420p",
-            "-tune", "fastdecode"  # Optimizar para decodificación rápida
+            "-tune", "film",  # Optimizado para contenido de video
+            "-movflags", "+faststart",  # Mejora la reproducción en streaming
+            "-bf", "2",  # Frames B para mejor compresión
+            "-g", "30",  # GOP size
+            "-keyint_min", "25",  # Mínimo intervalo entre keyframes
+            "-sc_threshold", "40",  # Umbral de detección de cambios de escena
+            "-b_strategy", "1",  # Estrategia de frames B
+            "-qmin", "10",  # Calidad mínima
+            "-qmax", "51",  # Calidad máxima
         ]
     )
     print("Video final guardado")

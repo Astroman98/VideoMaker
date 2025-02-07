@@ -288,7 +288,7 @@ I started sleeping at work, which was not even a full-time job.
             current_time += seg_duration
             # Si no es el último segmento, insertar la transición
             if seg_index < len(segments) - 1:
-                transition_clip = VideoFileClip("video/transicion_4.mp4").resized(res).with_start(current_time)
+                transition_clip = VideoFileClip("video/transition_4.mp4").resized(res).with_start(current_time)
 
                 # Crear copias de los efectos
                 fadein_effect = CrossFadeIn(0.3).copy()
@@ -374,22 +374,26 @@ I started sleeping at work, which was not even a full-time job.
     final_video.write_videofile(
         "video_con_audio_y_subtitulos(eng).mp4",
         fps=60,
-        #fps=24,  # Reducido para renderizado más rápido
-        codec="libx264",  # Volver a libx264 que es más compatible
-        bitrate="8000k",
-        #bitrate="1000k",
+        codec="libx264",
+        bitrate="20000k",  # Aumentado para mejor calidad
         audio_codec="aac",
         audio_bitrate="320k",
-        #audio_bitrate="128k",
-        preset="slow",  # Usar 'faster' en lugar de 'slow' para mejor velocidad
-        threads=8,  # Aumentar el número de threads
+        preset="medium",   # Balance entre velocidad y calidad
+        threads=8,
         ffmpeg_params=[
-            #"-crf", "20",
-            "-crf", "28",  # Un poco más alto que 17 para mejor velocidad, aún buena calidad
+            "-crf", "17",  # Menor valor = mejor calidad (rango 0-51)
             "-profile:v", "high",
             "-level", "4.2",
             "-pix_fmt", "yuv420p",
-            "-tune", "fastdecode"  # Optimizar para decodificación rápida
+            "-tune", "film",  # Optimizado para contenido de video
+            "-movflags", "+faststart",  # Mejora la reproducción en streaming
+            "-bf", "2",  # Frames B para mejor compresión
+            "-g", "30",  # GOP size
+            "-keyint_min", "25",  # Mínimo intervalo entre keyframes
+            "-sc_threshold", "40",  # Umbral de detección de cambios de escena
+            "-b_strategy", "1",  # Estrategia de frames B
+            "-qmin", "10",  # Calidad mínima
+            "-qmax", "51",  # Calidad máxima
         ]
     )
     print("Video final guardado")
