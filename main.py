@@ -156,7 +156,7 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
     text_height = temp_clip.h
     
     # Agregar un margen de tolerancia para dos líneas
-    margin_tolerance = line_height * 0.3  # 30% de una línea como margen
+    margin_tolerance = line_height * 0.1  # 30% de una línea como margen
     
     # Si el texto es de dos líneas o menos (con margen de tolerancia)
     if text_height <= (two_lines_height + margin_tolerance):
@@ -190,27 +190,32 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
             size=(res[0] - 100, None)
         )
         
-        scroll_distance = text_height - two_lines_height
+        # Ajustar el tamaño del contenedor para exactamente dos líneas
+        exact_two_lines = line_height * 2  # Altura exacta para dos líneas sin padding extra
+        scroll_distance = text_height - exact_two_lines
         
         def scroll_position(t):
             if t < 2:
-                return 0  # Comenzar desde arriba mostrando las primeras dos líneas
+                return 0
             remaining_time = duration - 2
             scroll_time = remaining_time - 0.3
             progress = min(1, ((t - 2) / scroll_time) * scroll_speed)
-            return progress * scroll_distance  # Mover hacia abajo
+            return progress * scroll_distance
         
         txt_clip = (txt_clip
-                   .with_position(lambda t: ('center', -scroll_position(t)))  # El negativo aquí hace que se mueva hacia abajo
+                   .with_position(lambda t: ('center', -scroll_position(t)))
                    .with_duration(duration))
         
+        # Crear el contenedor con la altura exacta de dos líneas
         container = CompositeVideoClip(
             [txt_clip],
-            size=(res[0] - 100, int(two_lines_height))
+            size=(res[0] - 100, int(exact_two_lines)),  # Usar la altura exacta
+            bg_color=None  # Asegurar que el fondo sea transparente
         ).with_duration(duration)
         
+        # Ajustar el margen inferior
         bottom_margin = 100
-        final_clip = container.with_position(('center', res[1] - bottom_margin - two_lines_height))
+        final_clip = container.with_position(('center', res[1] - bottom_margin - exact_two_lines))
     
     return final_clip.with_duration(duration)
 
@@ -299,8 +304,7 @@ async def main():
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
        """ 
-
-       Murió por complicaciones después de recibir un disparo cuando uno de sus negocios fue asaltado, y aunque hay un hombre en la familia que siempre ha sido amigo cercano, él también se hizo la prueba de ADN y quedó completamente descartado.
+"¡Vaya, eso suena delicioso! ¿Puedo compartirlo contigo?"
 
 
  """
