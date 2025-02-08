@@ -6,3 +6,6 @@ music/*.mp3
 __pycache__/
 *.pyc
 image/*.jpg
+audio_eng/*.mp3
+audio_esp/*.mp3
+*.sfk

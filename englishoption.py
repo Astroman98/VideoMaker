@@ -18,39 +18,43 @@ import random
 
 
 def split_sentences(texto):
-   """
-   Separa el texto en oraciones sin dividir las comillas de cierre.
-   """
-   partes = []
-   texto_actual = texto.strip()
-   
-   while texto_actual:
-       match_punto_comilla = texto_actual.find('."')
-       match_punto_interrogacion = texto_actual.find('?"')
-       match_interrogacion = texto_actual.find('?')
-       match_punto = texto_actual.find('. ')
-       
-       indices = []
-       if match_punto_comilla != -1:
-           indices.append(match_punto_comilla + 2)
-       if match_punto_interrogacion != -1:
-           indices.append(match_punto_interrogacion + 2)
-       elif match_interrogacion != -1:  # Solo si no encontramos ?"
-           indices.append(match_interrogacion + 1)
-       if match_punto != -1:
-           if not texto_actual[match_punto-2:match_punto+1] == '...':
-               indices.append(match_punto + 1)
-       
-       if not indices:
-           if texto_actual:
-               partes.append(texto_actual)
-           break
-           
-       primer_match = min(indices)
-       partes.append(texto_actual[:primer_match])
-       texto_actual = texto_actual[primer_match:].strip()
-   
-   return [p for p in partes if p]
+    """
+    Separa el texto en oraciones sin dividir las comillas de cierre.
+    """
+    partes = []
+    texto_actual = texto.strip()
+    
+    while texto_actual:
+        match_punto_comilla = texto_actual.find('."')
+        match_punto_interrogacion = texto_actual.find('?"')
+        match_interrogacion = texto_actual.find('?')
+        match_punto = texto_actual.find('. ')
+        match_punto_salto = texto_actual.find('.\n')  # Nuevo: buscar punto seguido de salto de línea
+        
+        indices = []
+        if match_punto_comilla != -1:
+            indices.append(match_punto_comilla + 2)
+        if match_punto_interrogacion != -1:
+            indices.append(match_punto_interrogacion + 2)
+        elif match_interrogacion != -1:  # Solo si no encontramos ?"
+            indices.append(match_interrogacion + 1)
+        if match_punto != -1:
+            if not texto_actual[match_punto-2:match_punto+1] == '...':
+                indices.append(match_punto + 1)
+        if match_punto_salto != -1:  # Nuevo: manejar punto seguido de salto de línea
+            if not texto_actual[match_punto_salto-2:match_punto_salto+1] == '...':
+                indices.append(match_punto_salto + 1)
+        
+        if not indices:
+            if texto_actual:
+                partes.append(texto_actual)
+            break
+            
+        primer_match = min(indices)
+        partes.append(texto_actual[:primer_match])
+        texto_actual = texto_actual[primer_match:].strip()
+    
+    return [p for p in partes if p]
 
 ''' def split_sentences(texto):
     """
@@ -81,7 +85,7 @@ async def generate_all_audios(sentences, seg_index):
     audio_files = []
     os.makedirs("audio", exist_ok=True)
     for i, sentence in enumerate(sentences):
-        file_path = f"audio/engseg{seg_index}_sentence_{i}.mp3"
+        file_path = f"audio_eng/seg{seg_index}_sentence_{i}.mp3"
         await generate_audio_for_sentence(sentence, file_path)
         audio_files.append(file_path)
     return audio_files
@@ -251,7 +255,7 @@ async def main():
     silence_duration = 2
 
     await generate_title_video(
-    text="Test",
+    text="What family secret was finally spilled in your family?",
     resolution=res
     )
     
@@ -262,9 +266,7 @@ async def main():
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
        """ 
-"At your age, we got up at 4 AM to work on the farm, After the job, we went home to have lunch with your grandfather, then we walked 10 km to go to school, When we got back, we worked in the field on a tractor until 6 p.m., then we cooked dinner for your grandfather."
-
-And I was like, "Yeah, but... he didn't work the farm with you in the morning?" Hello, he didnt do it.
+My grandma didn't drive. I thought she couldn't, but it was just never discussed.
 
  """
     )
@@ -369,7 +371,7 @@ And I was like, "Yeah, but... he didn't work the farm with you in the morning?" 
     #Aquí puedes configurar el volumen de la música de fondo
     from moviepy.audio.fx.MultiplyVolume import MultiplyVolume
     # Reducir el volumen de la música de fondo
-    volume_effect = MultiplyVolume(0.06).copy()
+    volume_effect = MultiplyVolume(0.05).copy()
     background_music = volume_effect.apply(background_music)
 
     
@@ -473,18 +475,18 @@ And I was like, "Yeah, but... he didn't work the farm with you in the morning?" 
     
     # Limpiar archivos de audio temporales
     print("Limpiando archivos temporales...")
-    for file in os.listdir("audio"):
+    for file in os.listdir("audio_eng"):  # Cambiado de "audio" a "audio_eng"
         if file.endswith(".mp3"):
             max_attempts = 3
             for attempt in range(max_attempts):
                 try:
-                    os.remove(os.path.join("audio", file))
+                    os.remove(os.path.join("audio_eng", file))  # Cambiado aquí también
                     break
                 except Exception as e:
                     if attempt == max_attempts - 1:
                         print(f"Error al eliminar archivo temporal {file}: {str(e)}")
                     else:
-                        await asyncio.sleep(0.5)  # Esperar medio segundo antes de reintentar
+                        await asyncio.sleep(0.5)
 
 if __name__ == "__main__":
     asyncio.run(main())
