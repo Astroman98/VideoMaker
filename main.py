@@ -29,21 +29,47 @@ def split_sentences(texto):
         match_punto_interrogacion = texto_actual.find('?"')
         match_interrogacion = texto_actual.find('?')
         match_punto = texto_actual.find('. ')
-        match_punto_salto = texto_actual.find('.\n')  # Nuevo: buscar punto seguido de salto de línea
+        match_punto_salto = texto_actual.find('.\n')
+        match_dos_puntos = texto_actual.find(': ')
+        match_dos_puntos_salto = texto_actual.find(':\n')
+        match_exclamacion = texto_actual.find('! ')
+        
+        # Mejorada la búsqueda de tres puntos seguidos de mayúscula
+        match_tres_puntos_mayuscula = -1
+        indice = texto_actual.find('…')  # Buscar el carácter unicode de puntos suspensivos
+        if indice == -1:  # Si no encuentra el carácter unicode, buscar tres puntos
+            indice = texto_actual.find('...')
+            
+        if indice != -1 and len(texto_actual) > indice + 1:
+            # Verificar si hay un espacio después de los puntos suspensivos
+            siguiente_char = texto_actual[indice + 1] if indice + 1 < len(texto_actual) else ''
+            if siguiente_char.isspace():
+                # Buscar la siguiente palabra
+                resto_texto = texto_actual[indice + 2:].lstrip()
+                if resto_texto and resto_texto[0].isupper():
+                    match_tres_puntos_mayuscula = indice + 1
         
         indices = []
         if match_punto_comilla != -1:
             indices.append(match_punto_comilla + 2)
         if match_punto_interrogacion != -1:
             indices.append(match_punto_interrogacion + 2)
-        elif match_interrogacion != -1:  # Solo si no encontramos ?"
+        elif match_interrogacion != -1:
             indices.append(match_interrogacion + 1)
         if match_punto != -1:
             if not texto_actual[match_punto-2:match_punto+1] == '...':
                 indices.append(match_punto + 1)
-        if match_punto_salto != -1:  # Nuevo: manejar punto seguido de salto de línea
+        if match_punto_salto != -1:
             if not texto_actual[match_punto_salto-2:match_punto_salto+1] == '...':
                 indices.append(match_punto_salto + 1)
+        if match_dos_puntos != -1:
+            indices.append(match_dos_puntos + 2)
+        if match_dos_puntos_salto != -1:
+            indices.append(match_dos_puntos_salto + 2)
+        if match_exclamacion != -1:
+            indices.append(match_exclamacion + 2)
+        if match_tres_puntos_mayuscula != -1:
+            indices.append(match_tres_puntos_mayuscula + 1)
         
         if not indices:
             if texto_actual:
@@ -106,12 +132,12 @@ def generate_subtitle_entries(sentences, durations):
         start += d
     return entries
 
+
 def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_speed=1.8):
     """
-    Crea un TextClip con efecto de scroll si el texto supera las dos líneas,
-    asegurando que todo el texto sea visible durante el scroll.
+    Crea un TextClip con efecto de scroll si el texto supera las dos líneas.
     """
-    # Primero creamos el TextClip para medir su altura
+    # Crear clip temporal para medir el texto
     temp_clip = TextClip(
         text=sentence,
         font_size=font_size,
@@ -124,14 +150,34 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
         size=(res[0] - 100, None)
     )
     
-    # Calculamos la altura de dos líneas y la altura total del texto
-    line_height = font_size * 1  # Aproximación del alto de línea con espaciado, anteriormente era 1.2
-    two_lines_height = line_height * 2
+    # Calculamos la altura de una línea y dos líneas
+    line_height = font_size * 1.1  # Un poco más de espacio para evitar cortes
+    two_lines_height = line_height * 2.2  # Altura máxima para dos líneas con padding
     text_height = temp_clip.h
     
-    # Solo aplicamos scroll si el texto supera las dos líneas
-    if text_height > two_lines_height:
-        # Creamos el clip de texto completo
+    # Agregar un margen de tolerancia para dos líneas
+    margin_tolerance = line_height * 0.3  # 30% de una línea como margen
+    
+    # Si el texto es de dos líneas o menos (con margen de tolerancia)
+    if text_height <= (two_lines_height + margin_tolerance):
+        # Crear clip estático sin scroll
+        final_clip = TextClip(
+            text=sentence,
+            font_size=font_size,
+            color='#cfcfcf',
+            font="font/HKGrotesk-SemiBoldLegacy.ttf",
+            text_align='center',
+            method='caption',
+            stroke_width=2,
+            stroke_color='black',
+            size=(res[0] - 100, None)
+        ).with_duration(duration)
+        
+        # Posicionar en la parte inferior con margen fijo
+        bottom_margin = 90
+        final_clip = final_clip.with_position(('center', res[1] - bottom_margin - text_height))
+    
+    else:
         txt_clip = TextClip(
             text=sentence,
             font_size=font_size,
@@ -144,43 +190,27 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
             size=(res[0] - 100, None)
         )
         
-        # Calculamos la distancia total de scroll necesaria
         scroll_distance = text_height - two_lines_height
         
         def scroll_position(t):
-            # Esperar 2 segundos antes de comenzar el scroll
             if t < 2:
-                return 0
-            # Usar el tiempo restante para el scroll
+                return 0  # Comenzar desde arriba mostrando las primeras dos líneas
             remaining_time = duration - 2
-            # Dejar 0.3s al final
             scroll_time = remaining_time - 0.3
-            # Calcular la posición del scroll con velocidad ajustada
-            progress = min(1, ((t - 2) / scroll_time) * scroll_speed)  # Cambiado t-1 a t-2
-            # Retornar la posición sin el negativo
-            return progress * scroll_distance
+            progress = min(1, ((t - 2) / scroll_time) * scroll_speed)
+            return progress * scroll_distance  # Mover hacia abajo
         
-        # Posicionar el texto dentro del contenedor
         txt_clip = (txt_clip
-                   # Comenzar con el texto en la parte superior del contenedor
-                   .with_position(lambda t: ('center', -scroll_position(t)))
+                   .with_position(lambda t: ('center', -scroll_position(t)))  # El negativo aquí hace que se mueva hacia abajo
                    .with_duration(duration))
         
-        # Crear un contenedor del tamaño de dos líneas
         container = CompositeVideoClip(
             [txt_clip],
             size=(res[0] - 100, int(two_lines_height))
         ).with_duration(duration)
         
-        # Posicionar el contenedor más arriba en el video
-        bottom_margin = 100  # Ajustar este valor según sea necesario
+        bottom_margin = 100
         final_clip = container.with_position(('center', res[1] - bottom_margin - two_lines_height))
-        
-    else:
-        # Para textos de dos líneas o menos, simplemente centramos sin scroll
-        # También ajustamos la posición vertical para mantener consistencia
-        bottom_margin = 90
-        final_clip = temp_clip.with_position(('center', res[1] - bottom_margin - two_lines_height))
     
     return final_clip.with_duration(duration)
 
@@ -258,7 +288,7 @@ async def main():
     silence_duration = 2
 
     await generate_title_video(
-    text="¿Qué secreto familiar finalmente salió a la luz en tu familia?",
+    text="test",
     resolution=res
     )
     
@@ -269,7 +299,8 @@ async def main():
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
        """ 
-Mi abuela no conducía. Yo pensaba que no podía, pero simplemente nunca se hablaba del tema.  
+
+       Murió por complicaciones después de recibir un disparo cuando uno de sus negocios fue asaltado, y aunque hay un hombre en la familia que siempre ha sido amigo cercano, él también se hizo la prueba de ADN y quedó completamente descartado.
 
 
  """
@@ -398,12 +429,12 @@ Mi abuela no conducía. Yo pensaba que no podía, pero simplemente nunca se habl
         method="compose"  # Usar compose en lugar del método por defecto
     )
     
-    '''
+    
     # Antes del write_videofile, redimensiona el video (SOLO APLICA CUANDO HACES TESTEOS)
     final_video = final_video.resized(width=426, height=240)
 
     final_video.write_videofile(
-    "video_con_audio_y_subtitulos(esp).mp4",
+    "testvideo_con_audio_y_subtitulos(esp).mp4",
     fps=24,
     codec="libx264",
     bitrate="500k",
@@ -422,36 +453,37 @@ Mi abuela no conducía. Yo pensaba que no podía, pero simplemente nunca se habl
         "-bufsize", "1000k"
     ]
     )
-    '''
     
-    # Exportar el video final
-    final_video.write_videofile(
-        "video_con_audio_y_subtitulos(esp).mp4",
-        fps=60,
-        codec="libx264",
-        bitrate="20000k",  # Aumentado para mejor calidad
-        audio_codec="aac",
-        audio_bitrate="320k",
-        preset="medium",   # Balance entre velocidad y calidad
-        threads=8,
-        ffmpeg_params=[
-            "-crf", "17",  # Menor valor = mejor calidad (rango 0-51)
-            "-profile:v", "high",
-            "-level", "4.2",
-            "-pix_fmt", "yuv420p",
-            "-tune", "film",  # Optimizado para contenido de video
-            "-movflags", "+faststart",  # Mejora la reproducción en streaming
-            "-bf", "2",  # Frames B para mejor compresión
-            "-g", "30",  # GOP size
-            "-keyint_min", "25",  # Mínimo intervalo entre keyframes
-            "-sc_threshold", "40",  # Umbral de detección de cambios de escena
-            "-b_strategy", "1",  # Estrategia de frames B
-            "-qmin", "10",  # Calidad mínima
-            "-qmax", "51",  # Calidad máxima
-        ]
-    )
-    print("Video final guardado")
 
+    '''
+        # Exportar el video final
+        final_video.write_videofile(
+            "video_con_audio_y_subtitulos(esp).mp4",
+            fps=60,
+            codec="libx264",
+            bitrate="20000k",  # Aumentado para mejor calidad
+            audio_codec="aac",
+            audio_bitrate="320k",
+            preset="medium",   # Balance entre velocidad y calidad
+            threads=8,
+            ffmpeg_params=[
+                "-crf", "17",  # Menor valor = mejor calidad (rango 0-51)
+                "-profile:v", "high",
+                "-level", "4.2",
+                "-pix_fmt", "yuv420p",
+                "-tune", "film",  # Optimizado para contenido de video
+                "-movflags", "+faststart",  # Mejora la reproducción en streaming
+                "-bf", "2",  # Frames B para mejor compresión
+                "-g", "30",  # GOP size
+                "-keyint_min", "25",  # Mínimo intervalo entre keyframes
+                "-sc_threshold", "40",  # Umbral de detección de cambios de escena
+                "-b_strategy", "1",  # Estrategia de frames B
+                "-qmin", "10",  # Calidad mínima
+                "-qmax", "51",  # Calidad máxima
+            ]
+        )
+        print("Video final guardado")
+    '''
 
 
 # Cerrar todos los clips
