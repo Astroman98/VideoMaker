@@ -293,7 +293,7 @@ async def main():
     silence_duration = 2
 
     await generate_title_video(
-    text="test",
+    text="¿Qué secreto familiar finalmente salió a la luz en tu familia?",
     resolution=res
     )
     
@@ -395,7 +395,7 @@ async def main():
         size=res
     ).with_duration(total_duration_with_silence)
 
-    background_music = AudioFileClip("music/pigletOST.mp3")
+    background_music = AudioFileClip("music/silence.mp3")
 
     if background_music.duration > total_duration_with_silence:
         background_music = background_music.subclipped(0, total_duration_with_silence)

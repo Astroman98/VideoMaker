@@ -27,23 +27,60 @@ def split_sentences(texto):
     while texto_actual:
         match_punto_comilla = texto_actual.find('."')
         match_punto_interrogacion = texto_actual.find('?"')
+        match_exclamacion_comilla = texto_actual.find('!"')  # Nuevo: buscar exclamación con comillas
         match_interrogacion = texto_actual.find('?')
         match_punto = texto_actual.find('. ')
-        match_punto_salto = texto_actual.find('.\n')  # Nuevo: buscar punto seguido de salto de línea
+        match_punto_salto = texto_actual.find('.\n')
+        match_dos_puntos = texto_actual.find(': ')
+        match_dos_puntos_salto = texto_actual.find(':\n')
+        match_exclamacion = texto_actual.find('! ')
+        
+        # Mejorada la búsqueda de tres puntos seguidos de mayúscula
+        match_tres_puntos_mayuscula = -1
+
+        # Buscar tanto los tres puntos normales como el carácter unicode
+        index_normal = texto_actual.find('...')
+        index_unicode = texto_actual.find('…')
+
+        # Procesar puntos suspensivos normales (...)
+        if index_normal != -1:
+            if len(texto_actual) > index_normal + 3:  # +3 para los tres puntos
+                resto_texto = texto_actual[index_normal + 3:].lstrip()
+                if resto_texto and resto_texto[0].isupper():
+                    match_tres_puntos_mayuscula = index_normal + 3
+
+        # Procesar punto suspensivo unicode (…)
+        if index_unicode != -1:
+            if len(texto_actual) > index_unicode + 1:  # +1 para el carácter unicode
+                resto_texto = texto_actual[index_unicode + 1:].lstrip()
+                if resto_texto and resto_texto[0].isupper():
+                    # Si encontramos ambos tipos, usar el que aparezca primero
+                    if match_tres_puntos_mayuscula == -1 or index_unicode < index_normal:
+                        match_tres_puntos_mayuscula = index_unicode + 1
         
         indices = []
         if match_punto_comilla != -1:
             indices.append(match_punto_comilla + 2)
         if match_punto_interrogacion != -1:
             indices.append(match_punto_interrogacion + 2)
-        elif match_interrogacion != -1:  # Solo si no encontramos ?"
+        if match_exclamacion_comilla != -1:  # Nuevo: agregar índice para !
+            indices.append(match_exclamacion_comilla + 2)
+        elif match_interrogacion != -1:
             indices.append(match_interrogacion + 1)
         if match_punto != -1:
             if not texto_actual[match_punto-2:match_punto+1] == '...':
                 indices.append(match_punto + 1)
-        if match_punto_salto != -1:  # Nuevo: manejar punto seguido de salto de línea
+        if match_punto_salto != -1:
             if not texto_actual[match_punto_salto-2:match_punto_salto+1] == '...':
                 indices.append(match_punto_salto + 1)
+        if match_dos_puntos != -1:
+            indices.append(match_dos_puntos + 2)
+        if match_dos_puntos_salto != -1:
+            indices.append(match_dos_puntos_salto + 2)
+        if match_exclamacion != -1:
+            indices.append(match_exclamacion + 2)
+        if match_tres_puntos_mayuscula != -1:
+            indices.append(match_tres_puntos_mayuscula + 1)
         
         if not indices:
             if texto_actual:
@@ -177,7 +214,11 @@ def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_spe
         # Para textos de dos líneas o menos, simplemente centramos sin scroll
         # También ajustamos la posición vertical para mantener consistencia
         bottom_margin = 90
-        final_clip = temp_clip.with_position(('center', res[1] - bottom_margin - two_lines_height))
+        text_height = temp_clip.h
+        padding_vertical = 60  # Agregar padding adicional
+        final_clip = temp_clip.with_position(
+            ('center', res[1] - bottom_margin - text_height - padding_vertical)
+        )
     
     return final_clip.with_duration(duration)
 
@@ -253,9 +294,9 @@ async def main():
     
     # Definir silence_duration al inicio
     silence_duration = 2
-
+    #AQUI VA EL TÍTULO. PUEDES CAMBIARLO A TU GUSTO
     await generate_title_video(
-    text="What family secret was finally spilled in your family?",
+    text="What?",
     resolution=res
     )
     
@@ -266,7 +307,11 @@ async def main():
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
        """ 
-My grandma didn't drive. I thought she couldn't, but it was just never discussed.
+ My mother often told stories like:
+My mother often told stories like: i dont know.
+
+The boy was rather spoiled too but constantly sought. 
+ My mother often told stories like:
 
  """
     )
@@ -357,7 +402,7 @@ My grandma didn't drive. I thought she couldn't, but it was just never discussed
         size=res
     ).with_duration(total_duration_with_silence)
 
-    background_music = AudioFileClip("music/pigletOST.mp3")
+    background_music = AudioFileClip("music/silence.mp3")
 
     if background_music.duration > total_duration_with_silence:
         background_music = background_music.subclipped(0, total_duration_with_silence)
@@ -396,35 +441,37 @@ My grandma didn't drive. I thought she couldn't, but it was just never discussed
     
 
 
-    '''
-            # Antes del write_videofile, redimensiona el video (SOLO APLICA CUANDO HACES TESTEOS)
-        final_video = final_video.resized(width=426, height=240)
-
-        final_video.write_videofile(
-        "video_con_audio_y_subtitulos(eng).mp4",
-        fps=24,
-        codec="libx264",
-        bitrate="500k",
-        audio_codec="aac", 
-        audio_bitrate="64k",
-        preset="ultrafast",
-        threads=8,
-        ffmpeg_params=[
-            "-crf", "35",
-            "-profile:v", "baseline",
-            "-level", "3.0",
-            "-pix_fmt", "yuv420p",
-            "-tune", "fastdecode",
-            "-movflags", "+faststart",
-            "-maxrate", "600k",
-            "-bufsize", "1000k"
-        ]
-        )
-    '''
-
+    
 
     
-    # Exportar el video final
+    
+    # Antes del write_videofile, redimensiona el video (SOLO APLICA CUANDO HACES TESTEOS)
+    final_video = final_video.resized(width=426, height=240)
+    final_video.write_videofile(
+    "testvideo_con_audio_y_subtitulos(eng).mp4",
+    fps=24,
+    codec="libx264",
+    bitrate="500k",
+    audio_codec="aac", 
+    audio_bitrate="64k",
+    preset="ultrafast",
+    threads=8,
+    ffmpeg_params=[
+        "-crf", "35",
+        "-profile:v", "baseline",
+        "-level", "3.0",
+        "-pix_fmt", "yuv420p",
+        "-tune", "fastdecode",
+        "-movflags", "+faststart",
+        "-maxrate", "600k",
+        "-bufsize", "1000k"
+    ]
+    )
+    
+
+
+    '''
+        # Exportar el video final
     final_video.write_videofile(
         "video_con_audio_y_subtitulos(eng).mp4",
         fps=60,
@@ -451,7 +498,9 @@ My grandma didn't drive. I thought she couldn't, but it was just never discussed
         ]
     )
     print("Video final guardado")
+    '''
 
+    
     
     
 # Cerrar todos los clips
