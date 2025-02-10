@@ -26,6 +26,138 @@ def split_sentences(texto):
     
     while texto_actual:
         match_punto_comilla = texto_actual.find('."')
+        match_punto_comilla2 = texto_actual.find('.”')
+        match_punto_interrogacion = texto_actual.find('?"')
+        match_punto_interrogacion2 = texto_actual.find('?”')
+        match_exclamacion_comilla = texto_actual.find('!"')
+        match_exclamacion_comilla2 = texto_actual.find('!”')
+        match_punto_parentesis = texto_actual.find('.)')  # Nuevo: buscar exclamación con comillas
+        match_interrogacion = texto_actual.find('?')
+        match_punto = texto_actual.find('. ')
+        match_punto_salto = texto_actual.find('.\n')
+        match_dos_puntos = texto_actual.find(': ')
+        match_dos_puntos_salto = texto_actual.find(':\n')
+        match_exclamacion = texto_actual.find('! ')
+        
+        # Mejorada la búsqueda de tres puntos seguidos de mayúscula
+        match_tres_puntos_mayuscula = -1
+
+        # Buscar tanto los tres puntos normales como el carácter unicode
+        index_normal = texto_actual.find('...')
+        index_unicode = texto_actual.find('…')
+
+        # Procesar puntos suspensivos normales (...)
+        if index_normal != -1:
+            if len(texto_actual) > index_normal + 3:  # +3 para los tres puntos
+                resto_texto = texto_actual[index_normal + 3:].lstrip()
+                if resto_texto and resto_texto[0].isupper():
+                    match_tres_puntos_mayuscula = index_normal + 3
+
+        # Procesar punto suspensivo unicode (…)
+        if index_unicode != -1:
+            if len(texto_actual) > index_unicode + 1:  # +1 para el carácter unicode
+                resto_texto = texto_actual[index_unicode + 1:].lstrip()
+                if resto_texto and resto_texto[0].isupper():
+                    # Si encontramos ambos tipos, usar el que aparezca primero
+                    if match_tres_puntos_mayuscula == -1 or index_unicode < index_normal:
+                        match_tres_puntos_mayuscula = index_unicode + 1
+        
+        indices = []
+        if match_punto_comilla != -1:
+            indices.append(match_punto_comilla + 2)
+        if match_punto_comilla2 != -1:
+            indices.append(match_punto_comilla2 + 2)
+        if match_punto_interrogacion != -1:
+            indices.append(match_punto_interrogacion + 2)
+        if match_punto_interrogacion2 != -1:
+            indices.append(match_punto_interrogacion2 + 2)
+        if match_punto_parentesis != -1:
+            indices.append(match_punto_parentesis + 2)
+        if match_exclamacion_comilla != -1:  # Nuevo: agregar índice para !
+            indices.append(match_exclamacion_comilla + 2)
+        if match_exclamacion_comilla2 != -1:  # Nuevo: agregar índice para !
+            indices.append(match_exclamacion_comilla2 + 2)
+        elif match_interrogacion != -1:
+            indices.append(match_interrogacion + 1)
+        if match_punto != -1:
+            # Buscar todos los puntos en el texto
+            posiciones_puntos = []
+            pos = 0
+            while True:
+                pos = texto_actual.find('. ', pos)
+                if pos == -1:
+                    break
+                posiciones_puntos.append(pos)
+                pos += 1
+
+            print(f"Todas las posiciones de puntos encontradas: {posiciones_puntos}")
+            
+            # Verificar cada punto
+            for pos in posiciones_puntos:
+                print(f"\nAnalizando punto en posición {pos}")
+                print(f"Texto alrededor: {texto_actual[max(0, pos-10):pos+10]}")
+                
+                # Verificar si este punto es parte de puntos suspensivos
+                is_part_of_ellipsis = False
+                if pos >= 2:
+                    prev_chars = texto_actual[pos-2:pos]
+                    print(f"Caracteres previos: '{prev_chars}'")
+                    if prev_chars == '..':
+                        is_part_of_ellipsis = True
+                
+                if not is_part_of_ellipsis:
+                    print("Este punto es válido")
+                    indices.append(pos + 1)
+                else:
+                    print("Este punto es parte de puntos suspensivos")
+        if match_punto_salto != -1:
+            if not texto_actual[match_punto_salto-2:match_punto_salto+1] == '...':
+                indices.append(match_punto_salto + 1)
+        if match_dos_puntos != -1:
+            indices.append(match_dos_puntos + 2)
+        if match_dos_puntos_salto != -1:
+            indices.append(match_dos_puntos_salto + 2)
+        if match_exclamacion != -1:
+            indices.append(match_exclamacion + 2)
+        if match_tres_puntos_mayuscula != -1:
+            indices.append(match_tres_puntos_mayuscula + 1)
+        
+                # Agregar estas líneas de depuración justo después de encontrar los matches
+        print(f"Punto encontrado en: {match_punto}")
+        print(f"Puntos suspensivos normales en: {index_normal}")
+        print(f"Puntos suspensivos unicode en: {index_unicode}")
+        print(f"Texto actual: {texto_actual}")
+
+
+        if not indices:
+            if texto_actual:
+                partes.append(texto_actual)
+            break
+
+
+        # Agregar estas líneas de depuración justo después de encontrar los matches
+        print(f"Punto encontrado en: {match_punto}")
+        print(f"Puntos suspensivos normales en: {index_normal}")
+        print(f"Puntos suspensivos unicode en: {index_unicode}")
+        print(f"Texto actual: {texto_actual}")
+            
+        primer_match = min(indices)
+        partes.append(texto_actual[:primer_match])
+        texto_actual = texto_actual[primer_match:].strip()
+    
+    return [p for p in partes if p]
+
+
+'''
+def split_sentences(texto):
+    """
+    Separa el texto en oraciones sin dividir las comillas de cierre.
+    """
+    partes = []
+    texto_actual = texto.strip()
+    
+    while texto_actual:
+        match_punto_comilla = texto_actual.find('."')
         match_punto_interrogacion = texto_actual.find('?"')
         match_interrogacion = texto_actual.find('?')
         match_punto = texto_actual.find('. ')
@@ -83,13 +215,17 @@ def split_sentences(texto):
     return [p for p in partes if p]
 
 '''
+    
+
+'''
 def split_sentences(texto):
-    """
+    
     Separa el texto en oraciones usando como delimitadores:
       - Un signo de interrogación (?)
       - Un punto (.) que no forme parte de una elipsis ("...").
-    """
+    
     return re.split(r'(?<=[?]|(?<!\.)\.(?!\.)(?!"))\s+', texto.strip())
+
 '''
 
 async def generate_audio_for_sentence(sentence, output_file, voz="es-US-AlonsoNeural"):
@@ -293,7 +429,7 @@ async def main():
     silence_duration = 2
 
     await generate_title_video(
-    text="¿Qué secreto familiar finalmente salió a la luz en tu familia?",
+    text="¿Qué?",
     resolution=res
     )
     
@@ -304,10 +440,31 @@ async def main():
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
        """ 
-"¡Vaya, eso suena delicioso! ¿Puedo compartirlo contigo?"
-
-
- """
+Comillas y puntos:
+"Esto es una prueba." La gente siguió caminando.
+Interrogación con comillas:
+"¿Por qué hiciste eso?" La respuesta fue clara.
+Exclamación con comillas:
+"¡No puedo creerlo!" El resultado fue sorprendente.
+Punto con paréntesis:
+La situación era complicada (aunque no tanto.) El tiempo pasaba rápido.
+Dos puntos con salto de línea y sin salto:
+Esto es lo que pasó: el tren se detuvo.
+Había tres opciones:
+La primera era correr.
+Combinación de puntos suspensivos y unicode:
+No sabía qué decir... Era complicado.
+No sabía qué decir… Era diferente.
+Punto simple:
+El día era soleado. La brisa era fresca.
+Exclamación simple:
+¡Qué sorpresa! El regalo era perfecto.
+Combinación de varios elementos:
+"¿Por qué no viniste?" La respuesta fue simple: tenía trabajo. El jefe me dijo: "No puedes faltar." Así que... Tuve que quedarme.
+Múltiples puntos suspensivos:
+No estaba seguro... Quizás era mejor esperar... Pero el tiempo apremiaba.
+Frases largas con punto:
+La casa en la colina, con sus ventanas rotas y su jardín descuidado, parecía abandonada. Los vecinos evitaban pasar cerca. """
     )
     
 
@@ -436,7 +593,6 @@ async def main():
     
     # Antes del write_videofile, redimensiona el video (SOLO APLICA CUANDO HACES TESTEOS)
     final_video = final_video.resized(width=426, height=240)
-
     final_video.write_videofile(
     "testvideo_con_audio_y_subtitulos(esp).mp4",
     fps=24,
@@ -460,33 +616,33 @@ async def main():
     
 
     '''
-        # Exportar el video final
-        final_video.write_videofile(
-            "video_con_audio_y_subtitulos(esp).mp4",
-            fps=60,
-            codec="libx264",
-            bitrate="20000k",  # Aumentado para mejor calidad
-            audio_codec="aac",
-            audio_bitrate="320k",
-            preset="medium",   # Balance entre velocidad y calidad
-            threads=8,
-            ffmpeg_params=[
-                "-crf", "17",  # Menor valor = mejor calidad (rango 0-51)
-                "-profile:v", "high",
-                "-level", "4.2",
-                "-pix_fmt", "yuv420p",
-                "-tune", "film",  # Optimizado para contenido de video
-                "-movflags", "+faststart",  # Mejora la reproducción en streaming
-                "-bf", "2",  # Frames B para mejor compresión
-                "-g", "30",  # GOP size
-                "-keyint_min", "25",  # Mínimo intervalo entre keyframes
-                "-sc_threshold", "40",  # Umbral de detección de cambios de escena
-                "-b_strategy", "1",  # Estrategia de frames B
-                "-qmin", "10",  # Calidad mínima
-                "-qmax", "51",  # Calidad máxima
-            ]
-        )
-        print("Video final guardado")
+    # Exportar el video final
+    final_video.write_videofile(
+        "video_con_audio_y_subtitulos(esp).mp4",
+        fps=60,
+        codec="libx264",
+        bitrate="20000k",  # Aumentado para mejor calidad
+        audio_codec="aac",
+        audio_bitrate="320k",
+        preset="medium",   # Balance entre velocidad y calidad
+        threads=8,
+        ffmpeg_params=[
+            "-crf", "17",  # Menor valor = mejor calidad (rango 0-51)
+            "-profile:v", "high",
+            "-level", "4.2",
+            "-pix_fmt", "yuv420p",
+            "-tune", "film",  # Optimizado para contenido de video
+            "-movflags", "+faststart",  # Mejora la reproducción en streaming
+            "-bf", "2",  # Frames B para mejor compresión
+            "-g", "30",  # GOP size
+            "-keyint_min", "25",  # Mínimo intervalo entre keyframes
+            "-sc_threshold", "40",  # Umbral de detección de cambios de escena
+            "-b_strategy", "1",  # Estrategia de frames B
+            "-qmin", "10",  # Calidad mínima
+            "-qmax", "51",  # Calidad máxima
+        ]
+    )
+    print("Video final guardado")
     '''
 
 

@@ -26,8 +26,12 @@ def split_sentences(texto):
     
     while texto_actual:
         match_punto_comilla = texto_actual.find('."')
+        match_punto_comilla2 = texto_actual.find('.”')
         match_punto_interrogacion = texto_actual.find('?"')
-        match_exclamacion_comilla = texto_actual.find('!"')  # Nuevo: buscar exclamación con comillas
+        match_punto_interrogacion2 = texto_actual.find('?”')
+        match_exclamacion_comilla = texto_actual.find('!"')
+        match_exclamacion_comilla2 = texto_actual.find('!”')
+        match_punto_parentesis = texto_actual.find('.)')  # Nuevo: buscar exclamación con comillas
         match_interrogacion = texto_actual.find('?')
         match_punto = texto_actual.find('. ')
         match_punto_salto = texto_actual.find('.\n')
@@ -61,15 +65,51 @@ def split_sentences(texto):
         indices = []
         if match_punto_comilla != -1:
             indices.append(match_punto_comilla + 2)
+        if match_punto_comilla2 != -1:
+            indices.append(match_punto_comilla2 + 2)
         if match_punto_interrogacion != -1:
             indices.append(match_punto_interrogacion + 2)
+        if match_punto_interrogacion2 != -1:
+            indices.append(match_punto_interrogacion2 + 2)
+        if match_punto_parentesis != -1:
+            indices.append(match_punto_parentesis + 2)
         if match_exclamacion_comilla != -1:  # Nuevo: agregar índice para !
             indices.append(match_exclamacion_comilla + 2)
+        if match_exclamacion_comilla2 != -1:  # Nuevo: agregar índice para !
+            indices.append(match_exclamacion_comilla2 + 2)
         elif match_interrogacion != -1:
             indices.append(match_interrogacion + 1)
         if match_punto != -1:
-            if not texto_actual[match_punto-2:match_punto+1] == '...':
-                indices.append(match_punto + 1)
+            # Buscar todos los puntos en el texto
+            posiciones_puntos = []
+            pos = 0
+            while True:
+                pos = texto_actual.find('. ', pos)
+                if pos == -1:
+                    break
+                posiciones_puntos.append(pos)
+                pos += 1
+
+            print(f"Todas las posiciones de puntos encontradas: {posiciones_puntos}")
+            
+            # Verificar cada punto
+            for pos in posiciones_puntos:
+                print(f"\nAnalizando punto en posición {pos}")
+                print(f"Texto alrededor: {texto_actual[max(0, pos-10):pos+10]}")
+                
+                # Verificar si este punto es parte de puntos suspensivos
+                is_part_of_ellipsis = False
+                if pos >= 2:
+                    prev_chars = texto_actual[pos-2:pos]
+                    print(f"Caracteres previos: '{prev_chars}'")
+                    if prev_chars == '..':
+                        is_part_of_ellipsis = True
+                
+                if not is_part_of_ellipsis:
+                    print("Este punto es válido")
+                    indices.append(pos + 1)
+                else:
+                    print("Este punto es parte de puntos suspensivos")
         if match_punto_salto != -1:
             if not texto_actual[match_punto_salto-2:match_punto_salto+1] == '...':
                 indices.append(match_punto_salto + 1)
@@ -82,10 +122,24 @@ def split_sentences(texto):
         if match_tres_puntos_mayuscula != -1:
             indices.append(match_tres_puntos_mayuscula + 1)
         
+                # Agregar estas líneas de depuración justo después de encontrar los matches
+        print(f"Punto encontrado en: {match_punto}")
+        print(f"Puntos suspensivos normales en: {index_normal}")
+        print(f"Puntos suspensivos unicode en: {index_unicode}")
+        print(f"Texto actual: {texto_actual}")
+
+
         if not indices:
             if texto_actual:
                 partes.append(texto_actual)
             break
+
+
+        # Agregar estas líneas de depuración justo después de encontrar los matches
+        print(f"Punto encontrado en: {match_punto}")
+        print(f"Puntos suspensivos normales en: {index_normal}")
+        print(f"Puntos suspensivos unicode en: {index_unicode}")
+        print(f"Texto actual: {texto_actual}")
             
         primer_match = min(indices)
         partes.append(texto_actual[:primer_match])
@@ -296,7 +350,7 @@ async def main():
     silence_duration = 2
     #AQUI VA EL TÍTULO. PUEDES CAMBIARLO A TU GUSTO
     await generate_title_video(
-    text="What?",
+    text="What",
     resolution=res
     )
     
@@ -307,12 +361,27 @@ async def main():
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
        """ 
- My mother often told stories like:
-My mother often told stories like: i dont know.
-
-The boy was rather spoiled too but constantly sought. 
- My mother often told stories like:
-
+"Why did you do that?" He looked confused.
+She wasn't ready... But she had to move on.
+"I can't believe this!" The results were shocking.
+This is what happened: the train stopped.
+Here's what we found:
+The first option was to run.
+I didn't know what to say... It was complicated.
+I didn't know what to say… It was different.
+The day was sunny. The breeze was cool.
+What a surprise! The gift was perfect.
+"Will you be there?" The answer was simple: I had work. My boss said: "You can't miss it." So... I had to stay.
+I wasn't sure... Maybe we should wait... Time was running out.
+The old house on the hill, with its broken windows and overgrown garden, seemed abandoned. The neighbors avoided walking nearby.
+"Can you help me with this?" "Of course I can!" He replied with enthusiasm.
+He explained (rather poorly.) The audience was confused.
+I don't understand... Maybe I never will. The confusion lingers.
+"Don't you get it?" She asked. "I really don't..." He admitted sadly.
+Something was wrong... Really wrong. Nobody understood why.
+Let me tell you something: life is short. Time flies quickly.
+"Is this real?" The question hung in the air... Nobody dared to answer.
+She looked at him and said: "We need to talk." His heart sank.
  """
     )
     
@@ -498,8 +567,8 @@ The boy was rather spoiled too but constantly sought.
         ]
     )
     print("Video final guardado")
+    
     '''
-
     
     
     
