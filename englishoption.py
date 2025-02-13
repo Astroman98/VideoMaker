@@ -23,6 +23,13 @@ def split_sentences(texto):
     """
     partes = []
     texto_actual = texto.strip()
+
+    # Filtrar partes que solo contienen puntuación o están vacías
+    def is_valid_sentence(text):
+        # Eliminar espacios en blanco
+        text = text.strip()
+        # Verificar si hay al menos un carácter que no sea puntuación
+        return any(c.isalnum() for c in text)
     
     while texto_actual:
         match_punto_comilla = texto_actual.find('."')
@@ -32,7 +39,8 @@ def split_sentences(texto):
         match_exclamacion_comilla = texto_actual.find('!"')
         match_exclamacion_comilla2 = texto_actual.find('!”')
         match_punto_parentesis = texto_actual.find('.)')  # Nuevo: buscar exclamación con comillas
-        match_interrogacion = texto_actual.find('?')
+        match_interrogacion = texto_actual.find('? ')
+        match_interrogacion_salto = texto_actual.find('?\n')
         match_punto = texto_actual.find('. ')
         match_punto_salto = texto_actual.find('.\n')
         match_dos_puntos = texto_actual.find(': ')
@@ -90,29 +98,25 @@ def split_sentences(texto):
                 posiciones_puntos.append(pos)
                 pos += 1
 
-            print(f"Todas las posiciones de puntos encontradas: {posiciones_puntos}")
             
             # Verificar cada punto
             for pos in posiciones_puntos:
-                print(f"\nAnalizando punto en posición {pos}")
-                print(f"Texto alrededor: {texto_actual[max(0, pos-10):pos+10]}")
                 
                 # Verificar si este punto es parte de puntos suspensivos
                 is_part_of_ellipsis = False
                 if pos >= 2:
                     prev_chars = texto_actual[pos-2:pos]
-                    print(f"Caracteres previos: '{prev_chars}'")
                     if prev_chars == '..':
                         is_part_of_ellipsis = True
                 
                 if not is_part_of_ellipsis:
-                    print("Este punto es válido")
+
                     indices.append(pos + 1)
-                else:
-                    print("Este punto es parte de puntos suspensivos")
         if match_punto_salto != -1:
             if not texto_actual[match_punto_salto-2:match_punto_salto+1] == '...':
                 indices.append(match_punto_salto + 1)
+        if match_interrogacion_salto != -1:
+            indices.append(match_interrogacion_salto + 1)
         if match_dos_puntos != -1:
             indices.append(match_dos_puntos + 2)
         if match_dos_puntos_salto != -1:
@@ -122,11 +126,7 @@ def split_sentences(texto):
         if match_tres_puntos_mayuscula != -1:
             indices.append(match_tres_puntos_mayuscula + 1)
         
-                # Agregar estas líneas de depuración justo después de encontrar los matches
-        print(f"Punto encontrado en: {match_punto}")
-        print(f"Puntos suspensivos normales en: {index_normal}")
-        print(f"Puntos suspensivos unicode en: {index_unicode}")
-        print(f"Texto actual: {texto_actual}")
+
 
 
         if not indices:
@@ -134,18 +134,12 @@ def split_sentences(texto):
                 partes.append(texto_actual)
             break
 
-
-        # Agregar estas líneas de depuración justo después de encontrar los matches
-        print(f"Punto encontrado en: {match_punto}")
-        print(f"Puntos suspensivos normales en: {index_normal}")
-        print(f"Puntos suspensivos unicode en: {index_unicode}")
-        print(f"Texto actual: {texto_actual}")
             
         primer_match = min(indices)
         partes.append(texto_actual[:primer_match])
         texto_actual = texto_actual[primer_match:].strip()
     
-    return [p for p in partes if p]
+    return [p for p in partes if p and is_valid_sentence(p)]
 
 ''' def split_sentences(texto):
     """
@@ -350,7 +344,7 @@ async def main():
     silence_duration = 2
     #AQUI VA EL TÍTULO. PUEDES CAMBIARLO A TU GUSTO
     await generate_title_video(
-    text="What",
+    text="What’s the creepiest or most unexplainable thing you’ve ever seen that you haven’t shared anywhere?",
     resolution=res
     )
     
@@ -361,27 +355,20 @@ async def main():
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
        """ 
-"Why did you do that?" He looked confused.
-She wasn't ready... But she had to move on.
-"I can't believe this!" The results were shocking.
-This is what happened: the train stopped.
-Here's what we found:
-The first option was to run.
-I didn't know what to say... It was complicated.
-I didn't know what to say… It was different.
-The day was sunny. The breeze was cool.
-What a surprise! The gift was perfect.
-"Will you be there?" The answer was simple: I had work. My boss said: "You can't miss it." So... I had to stay.
-I wasn't sure... Maybe we should wait... Time was running out.
-The old house on the hill, with its broken windows and overgrown garden, seemed abandoned. The neighbors avoided walking nearby.
-"Can you help me with this?" "Of course I can!" He replied with enthusiasm.
-He explained (rather poorly.) The audience was confused.
-I don't understand... Maybe I never will. The confusion lingers.
-"Don't you get it?" She asked. "I really don't..." He admitted sadly.
-Something was wrong... Really wrong. Nobody understood why.
-Let me tell you something: life is short. Time flies quickly.
-"Is this real?" The question hung in the air... Nobody dared to answer.
-She looked at him and said: "We need to talk." His heart sank.
+
+Holding my grandmother’s hand, he turned to her, looked her dead in the eyes, and said:
+
+“They’re asking me if I want to take a message over to anyone. Is there anything you want to say to someone?”
+
+When we started questioning her, she gave weird excuses like:
+
+"Oh, I was moving furniture."
+
+I ask why she needs it, and she casually replies:
+
+“It’s for my friend, the purple girl on the ceiling.”
+
+
  """
     )
     
@@ -429,7 +416,7 @@ She looked at him and said: "We need to talk." His heart sank.
             current_time += seg_duration
             # Si no es el último segmento, insertar la transición
             if seg_index < len(segments) - 1:
-                transition_clip = VideoFileClip("video/transition_4.mp4").resized(res).with_start(current_time)
+                transition_clip = VideoFileClip("video/transition_1.mp4").resized(res).with_start(current_time)
 
                 # Crear copias de los efectos
                 fadein_effect = CrossFadeIn(0.3).copy()
@@ -567,8 +554,8 @@ She looked at him and said: "We need to talk." His heart sank.
         ]
     )
     print("Video final guardado")
-    
     '''
+    
     
     
     
