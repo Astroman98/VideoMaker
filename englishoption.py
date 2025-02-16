@@ -168,10 +168,12 @@ async def generate_all_audios(sentences, seg_index):
     Se nombran de forma que se distingan por segmento.
     """
     audio_files = []
-    os.makedirs("audio", exist_ok=True)
+    os.makedirs("audio_eng", exist_ok=True)
+    
     for i, sentence in enumerate(sentences):
         file_path = f"audio_eng/seg{seg_index}_sentence_{i}.mp3"
         await generate_audio_for_sentence(sentence, file_path)
+        await asyncio.sleep(0.5)  # Esperar entre solicitudes
         audio_files.append(file_path)
     return audio_files
 
@@ -337,14 +339,14 @@ def get_random_video_segment(video_clip, needed_duration):
 async def main():
     target_resolution = (1920, 1080)
     # Abrir el video de fondo primero para obtener la resolución base
-    main_bg = VideoFileClip("video/Gameplay1.mp4").resized(target_resolution)
+    main_bg = VideoFileClip("video/full_background_sh2.mp4").resized(target_resolution)
     res = target_resolution  # Usar la resolución estándar en lugar de la del video
     
     # Definir silence_duration al inicio
     silence_duration = 2
     #AQUI VA EL TÍTULO. PUEDES CAMBIARLO A TU GUSTO
     await generate_title_video(
-    text="What’s the creepiest or most unexplainable thing you’ve ever seen that you haven’t shared anywhere?",
+    text="Texto que deseas procesar con subtítulos y audio.",
     resolution=res
     )
     
@@ -355,26 +357,13 @@ async def main():
     # Texto completo con separadores de segmento (líneas con '---')
     texto = (
        """ 
-
-Holding my grandmother’s hand, he turned to her, looked her dead in the eyes, and said:
-
-“They’re asking me if I want to take a message over to anyone. Is there anything you want to say to someone?”
-
-When we started questioning her, she gave weird excuses like:
-
-"Oh, I was moving furniture."
-
-I ask why she needs it, and she casually replies:
-
-“It’s for my friend, the purple girl on the ceiling.”
-
+Texto que deseas procesar con subtítulos y audio.
 
  """
     )
-    
 
-
-
+    # Antes de procesar el texto con split_sentences
+    texto = ' '.join(texto.split())
 
     # Separar el texto en segmentos usando el separador '---'
     segments = re.split(r'\n?\s*---+\s*\n?', texto.strip())
@@ -416,7 +405,7 @@ I ask why she needs it, and she casually replies:
             current_time += seg_duration
             # Si no es el último segmento, insertar la transición
             if seg_index < len(segments) - 1:
-                transition_clip = VideoFileClip("video/transition_1.mp4").resized(res).with_start(current_time)
+                transition_clip = VideoFileClip("video/transition_2.mp4").resized(res).with_start(current_time)
 
                 # Crear copias de los efectos
                 fadein_effect = CrossFadeIn(0.3).copy()
@@ -500,7 +489,7 @@ I ask why she needs it, and she casually replies:
     
 
     
-    
+    '''
     # Antes del write_videofile, redimensiona el video (SOLO APLICA CUANDO HACES TESTEOS)
     final_video = final_video.resized(width=426, height=240)
     final_video.write_videofile(
@@ -523,10 +512,10 @@ I ask why she needs it, and she casually replies:
         "-bufsize", "1000k"
     ]
     )
-    
-
-
     '''
+
+
+    
         # Exportar el video final
     final_video.write_videofile(
         "video_con_audio_y_subtitulos(eng).mp4",
@@ -554,7 +543,7 @@ I ask why she needs it, and she casually replies:
         ]
     )
     print("Video final guardado")
-    '''
+    
     
     
     
