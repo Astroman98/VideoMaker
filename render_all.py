@@ -3,13 +3,40 @@ import multiprocessing
 import os
 import shutil
 import time
-from main import main as render_spanish
-from englishoption import main as render_english
+from main import main as render_spanish, solicitar_nombre_transicion as solicitar_transicion_esp, solicitar_nombre_background as solicitar_background_esp
+from generate_title import solicitar_intro_video as solicitar_intro_esp
+from englishoption import main as render_english, solicitar_nombre_transicion as solicitar_transicion_eng, solicitar_nombre_background as solicitar_background_eng
+from generate_titleeng import solicitar_intro_video as solicitar_intro_eng
 
-def run_spanish():
-    """Wrapper para ejecutar el renderizado en español"""
+# Variables globales para almacenar las selecciones
+configuracion_espanol = {}
+configuracion_ingles = {}
+
+def obtener_configuraciones():
+    """Solicita todas las configuraciones antes de iniciar el renderizado"""
+    
+    print("\n===== CONFIGURACIÓN PARA VERSIÓN EN ESPAÑOL =====")
+    configuracion_espanol['transicion'] = solicitar_transicion_esp()
+    configuracion_espanol['background'] = solicitar_background_esp()
+    configuracion_espanol['intro'] = solicitar_intro_esp()
+    
+    print("\n===== CONFIGURATION FOR ENGLISH VERSION =====")
+    configuracion_ingles['transicion'] = solicitar_transicion_eng()
+    configuracion_ingles['background'] = solicitar_background_eng()
+    configuracion_ingles['intro'] = solicitar_intro_eng()
+    
+    return configuracion_espanol, configuracion_ingles
+
+def run_spanish(config):
+    """Wrapper para ejecutar el renderizado en español con configuración predefinida"""
     try:
         os.makedirs("audio_esp", exist_ok=True)
+        
+        # Guardar la configuración en variables de entorno o archivos temporales
+        os.environ['ESP_TRANSICION'] = config['transicion']
+        os.environ['ESP_BACKGROUND'] = config['background']
+        os.environ['ESP_INTRO'] = config['intro']
+        
         asyncio.run(render_spanish())
     except Exception as e:
         print(f"Error en renderizado español: {str(e)}")
@@ -18,10 +45,16 @@ def run_spanish():
         time.sleep(2)
         cleanup_directory("audio_esp")
 
-def run_english():
-    """Wrapper para ejecutar el renderizado en inglés"""
+def run_english(config):
+    """Wrapper para ejecutar el renderizado en inglés con configuración predefinida"""
     try:
         os.makedirs("audio_eng", exist_ok=True)
+        
+        # Guardar la configuración en variables de entorno o archivos temporales
+        os.environ['ENG_TRANSICION'] = config['transicion']
+        os.environ['ENG_BACKGROUND'] = config['background']
+        os.environ['ENG_INTRO'] = config['intro']
+        
         asyncio.run(render_english())
     except Exception as e:
         print(f"Error en renderizado inglés: {str(e)}")
@@ -52,13 +85,18 @@ def cleanup_directory(directory):
             time.sleep(1)
 
 if __name__ == "__main__":
+    # Primero obtenemos todas las configuraciones
+    config_esp, config_eng = obtener_configuraciones()
+    
     # Configurar procesos con mayor prioridad de recursos
     process_spanish = multiprocessing.Process(
         target=run_spanish,
+        args=(config_esp,),
         name="Spanish_Render"
     )
     process_english = multiprocessing.Process(
         target=run_english,
+        args=(config_eng,),
         name="English_Render"
     )
     

@@ -13,6 +13,45 @@ from moviepy.video.fx.FadeIn import FadeIn
 from moviepy.audio.fx.AudioFadeIn import AudioFadeIn
 from moviepy.audio.fx.AudioFadeOut import AudioFadeOut
 
+def solicitar_intro_video():
+    """
+    Solicita al usuario el nombre del archivo de intro a utilizar.
+    """
+        # Verificar si ya tenemos un valor predefinido
+    if 'ESP_INTRO' in os.environ:
+        return os.environ['ESP_INTRO']
+    
+    print("\n--- CONFIGURACIÓN DE VIDEO INTRO ---")
+    print("Archivos de intro disponibles en la carpeta 'video':")
+    
+    # Listar los archivos de intro disponibles
+    archivos_intro = [f for f in os.listdir("video") if f.startswith("intro") and f.endswith(".mp4")]
+    
+    if not archivos_intro:
+        print("No se encontraron archivos de intro en la carpeta 'video'.")
+        return "intro4.mp4"  # valor por defecto
+    
+    for i, archivo in enumerate(archivos_intro, 1):
+        print(f"{i}. {archivo}")
+    
+    seleccion = input("\nSeleccione el número del video intro a utilizar (o presione Enter para usar intro4.mp4): ")
+    
+    if not seleccion:
+        return "intro4.mp4"
+    
+    try:
+        indice = int(seleccion) - 1
+        if 0 <= indice < len(archivos_intro):
+            print(f"Se utilizará el video intro: {archivos_intro[indice]}")
+            return archivos_intro[indice]
+        else:
+            print("Selección fuera de rango. Se utilizará intro4.mp4")
+            return "intro4.mp4"
+    except ValueError:
+        print("Entrada inválida. Se utilizará intro4.mp4")
+        return "intro4.mp4"
+
+
 
 
 async def generate_title_video(
@@ -26,6 +65,9 @@ async def generate_title_video(
     Genera un video con un título sobre un video de fondo,
     con duración sincronizada al audio TTS más 1 segundo.
     """
+    # Solicitar el video de intro a utilizar
+    intro_video = solicitar_intro_video()
+    
     # Asegurar que existe el directorio para el audio
     os.makedirs("audio", exist_ok=True)
     
@@ -35,7 +77,7 @@ async def generate_title_video(
     await comunicador.save(audio_file)
     
     # Cargar el video de fondo y el audio TTS
-    background = VideoFileClip("video/intro3.mp4", audio=False).resized(resolution)
+    background = VideoFileClip(f"video/{intro_video}", audio=False).resized(resolution)
     tts_audio = AudioFileClip(audio_file)
 
 

@@ -14,6 +14,42 @@ from moviepy.audio.fx.AudioFadeIn import AudioFadeIn
 from moviepy.audio.fx.AudioFadeOut import AudioFadeOut
 
 
+def solicitar_intro_video():
+    """
+    Solicita al usuario el nombre del archivo de intro a utilizar.
+    """
+    if 'ENG_INTRO' in os.environ:
+        return os.environ['ENG_INTRO']
+    print("\n--- INTRO VIDEO CONFIGURATION ---")
+    print("Available intro files in 'video' folder:")
+    
+    # Listar los archivos de intro disponibles
+    archivos_intro = [f for f in os.listdir("video") if f.startswith("intro") and f.endswith(".mp4")]
+    
+    if not archivos_intro:
+        print("No intro files found in the 'video' folder.")
+        return "intro8.mp4"  # valor por defecto
+    
+    for i, archivo in enumerate(archivos_intro, 1):
+        print(f"{i}. {archivo}")
+    
+    seleccion = input("\nSelect the intro video number to use (or press Enter to use intro8.mp4): ")
+    
+    if not seleccion:
+        return "intro8.mp4"
+    
+    try:
+        indice = int(seleccion) - 1
+        if 0 <= indice < len(archivos_intro):
+            print(f"Using intro video: {archivos_intro[indice]}")
+            return archivos_intro[indice]
+        else:
+            print("Selection out of range. Using intro8.mp4")
+            return "intro8.mp4"
+    except ValueError:
+        print("Invalid input. Using intro8.mp4")
+        return "intro8.mp4"
+
 
 async def generate_title_video(
     text="Hola, este es un título",
@@ -26,6 +62,9 @@ async def generate_title_video(
     Genera un video con un título sobre un video de fondo,
     con duración sincronizada al audio TTS más 1 segundo.
     """
+    # Solicitar el video de intro a utilizar
+    intro_video = solicitar_intro_video()
+    
     # Asegurar que existe el directorio para el audio
     os.makedirs("audio", exist_ok=True)
     
@@ -35,7 +74,7 @@ async def generate_title_video(
     await comunicador.save(audio_file)
     
     # Cargar el video de fondo y el audio TTS
-    background = VideoFileClip("video/intro4.mp4", audio=False).resized(resolution)
+    background = VideoFileClip(f"video/{intro_video}", audio=False).resized(resolution)
     tts_audio = AudioFileClip(audio_file)
 
 
