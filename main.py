@@ -5,7 +5,6 @@ import numpy as np
 import textwrap
 from moviepy import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip, ColorClip
 from moviepy import concatenate_audioclips
-import edge_tts
 from moviepy.audio.AudioClip import AudioArrayClip
 from generate_title import generate_title_video
 from moviepy import concatenate_videoclips
@@ -15,6 +14,7 @@ from moviepy.audio.fx.AudioFadeIn import AudioFadeIn
 from moviepy.audio.fx.AudioFadeOut import AudioFadeOut
 from moviepy import CompositeAudioClip
 import random
+
 
 
 def split_sentences(texto):
@@ -145,166 +145,164 @@ def split_sentences(texto):
     return [p for p in partes if p and is_valid_sentence(p)]
 
 
-'''
-def split_sentences(texto):
-    """
-    Separa el texto en oraciones sin dividir las comillas de cierre.
-    """
-    partes = []
-    texto_actual = texto.strip()
-    
-    while texto_actual:
-        match_punto_comilla = texto_actual.find('."')
-        match_punto_interrogacion = texto_actual.find('?"')
-        match_interrogacion = texto_actual.find('?')
-        match_punto = texto_actual.find('. ')
-        match_punto_salto = texto_actual.find('.\n')
-        match_dos_puntos = texto_actual.find(': ')
-        match_dos_puntos_salto = texto_actual.find(':\n')
-        match_exclamacion = texto_actual.find('! ')
-        
-        # Mejorada la búsqueda de tres puntos seguidos de mayúscula
-        match_tres_puntos_mayuscula = -1
-        indice = texto_actual.find('…')  # Buscar el carácter unicode de puntos suspensivos
-        if indice == -1:  # Si no encuentra el carácter unicode, buscar tres puntos
-            indice = texto_actual.find('...')
-            
-        if indice != -1 and len(texto_actual) > indice + 1:
-            # Verificar si hay un espacio después de los puntos suspensivos
-            siguiente_char = texto_actual[indice + 1] if indice + 1 < len(texto_actual) else ''
-            if siguiente_char.isspace():
-                # Buscar la siguiente palabra
-                resto_texto = texto_actual[indice + 2:].lstrip()
-                if resto_texto and resto_texto[0].isupper():
-                    match_tres_puntos_mayuscula = indice + 1
-        
-        indices = []
-        if match_punto_comilla != -1:
-            indices.append(match_punto_comilla + 2)
-        if match_punto_interrogacion != -1:
-            indices.append(match_punto_interrogacion + 2)
-        elif match_interrogacion != -1:
-            indices.append(match_interrogacion + 1)
-        if match_punto != -1:
-            if not texto_actual[match_punto-2:match_punto+1] == '...':
-                indices.append(match_punto + 1)
-        if match_punto_salto != -1:
-            if not texto_actual[match_punto_salto-2:match_punto_salto+1] == '...':
-                indices.append(match_punto_salto + 1)
-        if match_dos_puntos != -1:
-            indices.append(match_dos_puntos + 2)
-        if match_dos_puntos_salto != -1:
-            indices.append(match_dos_puntos_salto + 2)
-        if match_exclamacion != -1:
-            indices.append(match_exclamacion + 2)
-        if match_tres_puntos_mayuscula != -1:
-            indices.append(match_tres_puntos_mayuscula + 1)
-        
-        if not indices:
-            if texto_actual:
-                partes.append(texto_actual)
-            break
-            
-        primer_match = min(indices)
-        partes.append(texto_actual[:primer_match])
-        texto_actual = texto_actual[primer_match:].strip()
-    
-    return [p for p in partes if p]
 
-'''
-    
 
-'''
-def split_sentences(texto):
-    
-    Separa el texto en oraciones usando como delimitadores:
-      - Un signo de interrogación (?)
-      - Un punto (.) que no forme parte de una elipsis ("...").
-    
-    return re.split(r'(?<=[?]|(?<!\.)\.(?!\.)(?!"))\s+', texto.strip())
-
-'''
-
-import os
 import subprocess
-import asyncio
+
 import tempfile
 
-def generate_audio_with_edge_tts(text, output_file, voice="es-US-AlonsoNeural", rate="+10%"):
-    """
-    Genera audio usando edge-tts como herramienta de línea de comandos a través de subprocess.
-    Esta es una función sincrónica que emula exactamente el método del primer código.
-    
-    Args:
-        text: El texto a convertir en audio
-        output_file: Ruta del archivo de salida
-        voice: Voz a utilizar
-        rate: Velocidad de habla
-    """
-    # Crear un archivo temporal para el texto
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as temp_file:
-        temp_file.write(text)
-        text_file_path = temp_file.name
-    
-    try:
-        # Configurar el comando exactamente igual al primer código
-        command = [
-            "edge-tts",
-            "--file", text_file_path,
-            "--write-media", output_file,
-            "--rate", rate,
-            "--voice", voice
-        ]
-        
-        # Ejecutar el comando
-        subprocess.run(command, check=True)
-        print(f"Audio generado: {output_file}")
-        return True
-        
-    except subprocess.CalledProcessError as e:
-        print(f"Error al ejecutar edge-tts: {e}")
+import os
+import asyncio
+from xml.sax.saxutils import escape
+import azure.cognitiveservices.speech as speechsdk
+
+def _guess_lang_from_voice(voice_name: str) -> str:
+    # Ej: "es-US-AlonsoNeural" -> "es-US"
+    parts = voice_name.split("-")
+    return "-".join(parts[:2]) if len(parts) >= 2 else "en-US"
+
+
+
+
+
+
+
+
+
+
+
+
+import time
+from xml.sax.saxutils import escape
+import azure.cognitiveservices.speech as speechsdk
+
+def generate_audio_with_azure_tts(
+    text: str,
+    output_file: str,
+    voice: str = "es-US-AlonsoNeural",
+    rate: str = "10%"
+) -> bool:
+    key = os.environ.get("AZURE_SPEECH_KEY")
+    region = os.environ.get("AZURE_SPEECH_REGION")
+
+    if not key or not region:
+        print("Faltan variables de entorno AZURE_SPEECH_KEY o AZURE_SPEECH_REGION")
         return False
-        
-    finally:
-        # Limpiar el archivo temporal
+
+    speech_config = speechsdk.SpeechConfig(subscription=key, region=region)
+    speech_config.speech_synthesis_voice_name = voice
+    speech_config.set_speech_synthesis_output_format(
+        speechsdk.SpeechSynthesisOutputFormat.Riff48Khz16BitMonoPcm
+    )
+
+    # NUEVO: más tolerancia a latencia de red y picos de síntesis
+    # Si tu SDK es viejo y esto falla, actualiza el paquete a la versión más reciente.
+    speech_config.set_property(
+        speechsdk.PropertyId.SpeechSynthesis_FrameTimeoutInterval,
+        "10000"
+    )
+    speech_config.set_property(
+        speechsdk.PropertyId.SpeechSynthesis_RtfTimeoutThreshold,
+        "25"
+    )
+
+    lang = _guess_lang_from_voice(voice)
+    safe_text = escape(text)
+
+    ssml = f"""
+<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="{lang}">
+  <voice name="{voice}">
+    <prosody rate="{rate}">{safe_text}</prosody>
+  </voice>
+</speak>
+""".strip()
+
+    attempt = 0
+    backoff = 15.0
+
+    while True:
+        attempt += 1
+        result = None
+        synthesizer = None
         try:
-            os.unlink(text_file_path)
+            audio_config = speechsdk.audio.AudioOutputConfig(filename=output_file)
+            synthesizer = speechsdk.SpeechSynthesizer(
+                speech_config=speech_config,
+                audio_config=audio_config
+            )
+            result = synthesizer.speak_ssml_async(ssml).get()
+
         except Exception as e:
-            print(f"Error al eliminar archivo temporal: {e}")
+            print(f"TTS excepción en intento {attempt}: {e}")
+
+        finally:
+            if synthesizer is not None:
+                try:
+                    synthesizer.close()
+                except Exception:
+                    pass
+
+        if result and result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+            return True
+
+        is_429 = False
+        if result and result.reason == speechsdk.ResultReason.Canceled:
+            details = result.cancellation_details
+            print(f"TTS cancelado (intento {attempt}): {details.reason}")
+            if details.error_details:
+                print(f"Detalle: {details.error_details}")
+                err = details.error_details.lower()
+                is_429 = "429" in err or "too many requests" in err
+        elif result is not None:
+            print(f"TTS falló (intento {attempt}): {result.reason}")
+
+        if not is_429:
+            return False
+
+        espera = round(backoff)
+        print(f"Reintentando en {espera} segundos... (intento {attempt})")
+        time.sleep(espera)
+        backoff = min(backoff * 1.5, 90.0)
+
+
+
+
+
+
+
+
+
+
+
+
 
 async def generate_audio_for_sentence(sentence, output_file, voz="es-US-AlonsoNeural"):
-    """
-    Versión asincrónica que ejecuta la función sincrónica en un hilo separado.
-    """
     return await asyncio.to_thread(
-        generate_audio_with_edge_tts, 
-        sentence, 
-        output_file, 
-        voz, 
+        generate_audio_with_azure_tts,
+        sentence,
+        output_file,
+        voz,
         "+10%"
     )
 
 async def generate_all_audios(sentences, seg_index):
-    """
-    Genera un audio para cada oración y devuelve una lista de rutas a los archivos generados.
-    """
     audio_files = []
     os.makedirs("audio_esp", exist_ok=True)
-    
+
     for i, sentence in enumerate(sentences):
-        file_path = f"audio_esp/seg{seg_index}_sentence_{i}.mp3"
+        file_path = f"audio_esp/seg{seg_index}_sentence_{i}.wav"
         success = await generate_audio_for_sentence(sentence, file_path)
-        
+
         if success and os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             audio_files.append(file_path)
             print(f"Archivo de audio {i+1}/{len(sentences)} creado correctamente")
         else:
             print(f"ADVERTENCIA: Error al generar audio para la oración {i+1}")
-        
-        # Pequeña pausa entre generaciones de audio
-        await asyncio.sleep(0.5)
-    
+
+        await asyncio.sleep(5.0)
+
     return audio_files
+
 
 def generate_subtitle_entries(sentences, durations):
     """
@@ -509,7 +507,7 @@ async def process_segment(segment_text, res, seg_index):
     
     for file in audio_files:
         clip = AudioFileClip(file)
-        new_duration = clip.duration - 0.7 if clip.duration > 0.7 else clip.duration
+        new_duration = clip.duration - 0.6 if clip.duration > 0.6 else clip.duration
         clip = clip.subclipped(0, new_duration)
         audio_clips.append(clip)
         durations.append(new_duration)
@@ -570,7 +568,7 @@ async def main():
     silence_duration = 2
 
     await generate_title_video(
-    text="¿Cuál ha sido?",
+    text=""" ¿Cuál es tu peor historia de "un amigo te traicionó por la espalda"? """,
     resolution=res
     )
     
@@ -579,11 +577,166 @@ async def main():
     texto = (
        """ 
 
-En un campamento de verano, un amigo y yo subimos a un techo de hojalata de un gran salón construido en la ladera de una colina empinada.
+
+Mi amigo salía con una chica a la que, según me daba cuenta, simplemente no le caía bien, pero al menos éramos cordiales el uno con el otro, hasta el viaje de campamento del fin de semana festivo del 24 de mayo. Ella se empeñó en mantener nuestro alcohol separado, lo cual estaba bien. Yo tenía mi cerveza, ellos tenían sus limonadas con alcohol, así que bien. Luego me levanté temprano en la primera mañana e hice panqueques para todos, ¿por qué? Porque así es como soy. Cuando los campistas salieron de sus tiendas de campaña atraídos por el olor a panqueques de manzana y canela y café de fogata, ella fue la única que perdió los estribos. Yo había abierto su nevera portátil y usado su margarina. Mi amigo solo pareció apenado y trató de mantener la paz mientras yo le lanzaba una moneda de dos dólares y me disculpaba. Su reacción fue sacar un candado de su bolso de gimnasio y cerrar "su tienda de campaña" con "su alcohol" y "su comida". Más tarde, él se me acercó y me preguntó si le podía prestar el auto, para que pudieran ir rápido al pueblo, comprar unas cosas y hablar sobre ser un poco más tolerantes con los demás campistas. Le dije que estaba bien y le entregué las llaves. Cuando regresaron horas después, el tanque estaba vacío y la cocina de campaña (una caja de madera con correas llamada wannigan con platos, cubiertos, ollas y sartenes, etc.) había desaparecido de la parte trasera de la camioneta. Buscamos por el campamento, nada. Era de mi padre y había pasado de generación en generación en la familia. Fui conduciendo para llenar el tanque y comprar un envase nuevo de margarina, y estaba a la mitad del camino rural cuando vi el wannigan a un lado de la carretera, destrozado en la zanja. Había marcas a lo largo de los paneles traseros junto a los asientos abatidos donde uno de ellos claramente lo había empujado hacia afuera por la parte trasera del auto en movimiento.
+
+Después de apilarlo todo de vuelta en la camioneta, atónito, pieza por pieza, llené el tanque de combustible y conduje de regreso, y luego empaqué mis cosas. Nadie dijo una palabra, hasta que rompí el permiso para acampar y arranqué a toda velocidad dejando sus gritos detrás de mí en el polvo.
+
+Nunca volví a hablar con ninguno de los dos.
 
 ---
+Tuve un "amigo" que le robaba a los amigos con bastante regularidad.
 
-Hola.
+Una vez tuve una pequeña reunión social (6 o 7 personas) y mi nuevo teléfono desapareció. El muy miserable me ayudó a buscar el teléfono en mi casa durante más de una hora, y más tarde vi mi teléfono en su habitación sobre su escritorio. Simplemente lo tomé de vuelta, no se intercambiaron palabras. Solo dejé de hablarle por completo después de eso.
+
+Más tarde, él estuvo en la fiesta de una amiga en común. El iPod de 80 gb de ella desapareció. Algunos amigos y yo sospechábamos que había sido él, así que al día siguiente llamamos a la casa de empeño local y describimos el iPod. El sujeto de la casa de empeño dijo que había recibido uno ese día. Efectivamente, estaba a nombre de este miserable. El dueño de la casa de empeño se ofreció a llamar a la policía, pero nosotros nos negamos. Nos acercamos al miserable y le dijimos que lo sabíamos. Intentó negarlo, pero logramos avergonzarlo hasta que lo admitió.
+
+Al diablo con las personas que le roban a sus amigos.
+
+---
+Mientras trabajaba de forma independiente en un excelente proyecto que surgió de la nada, descubrí que trabajaría con Sean, un sujeto que estaba en mi grupo en una antigua agencia de publicidad. Genial, una cara conocida.
+
+Bueno, Sean era un nerd. A nadie le caía bien y, como su director creativo asociado (supervisor), yo lo cuidaba. Parecía esforzarse mucho y yo no entendía por qué todos lo excluían. Durante dos rondas de despidos, di la cara por él y salvé su trabajo, prometiendo trabajar con él. Siempre estaba ocupado y, poco después, me fui a un nuevo trabajo. Así que esperaba con ansias trabajar un poco más con él y demostrarles a esos malditos de nuestra antigua agencia que estaban equivocados.
+
+Mientras trabajaba en este proyecto independiente, sentí que algo andaba mal poco después de que comenzara. Sean no tenía ideas. ¡Ninguna! Literalmente traía una libreta en blanco día tras día. Las excusas eran que estaba cansado, que la tarea lo confundía, etc. Yo estaba nervioso, pero estaba atrapado. Así que, como estábamos en un equipo, compartí mis ideas, nuestras únicas ideas, con él. Teníamos que presentar una hora después del almuerzo.
+
+Durante el almuerzo, tuve que ir a una cita médica con mi esposa, quien estaba gravemente enferma. En mi camino de regreso a la oficina, el taxi en el que iba tuvo un accidente. Un idiota en un Lexus se estrelló contra nosotros. Nadie resultó herido, pero ambos automóviles fueron pérdida total. Además, no me sentía cómodo dejando al taxista, ya que era extranjero y hablaba poco inglés. El sujeto que nos golpeó estaba despotricando, así que me quedé para dar una declaración a la policía. Llamé a Sean para explicarle, le pregunté si le importaba encargarse de la reunión y le pedí que informara sobre mi situación.
+
+Entonces el imbécil presentó mi trabajo, afirmó que todo era suyo y me enviaron a casa porque "Sean lo hizo a la perfección".
+
+Tardé 9 meses en que me pagaran por el tiempo que invertí. Todo el tiempo traté de explicarlo, pero nadie me creyó. Él copió mis notas con su propia letra y las presentó como prueba. En lo que a ellos respectaba, yo me estaba aprovechando del trabajo de este sujeto. Podría haberle pateado sus partes íntimas durante una semana sin aburrirme.
+
+Dos meses después, fue descubierto cuando intentó hacerlo de nuevo. Docenas de antiguos compañeros de trabajo llamaron para restregármelo en la cara. "¿Todavía crees que solo estamos molestando a Sean?". Aprendí que a veces las personas son rechazadas porque se lo merecen.
+---
+Hace años, cuando cursaba mi licenciatura en ciencias de la salud, la mayoría de mis compañeros estaba decidida a entrar a la facultad de medicina. Nuestro programa de medicina aceptaba principalmente a estudiantes de nuestra competitiva carrera debido a los requisitos previos de las materias. Todos nos conocíamos y éramos amistosos; pasábamos tiempo juntos y formábamos grupos de estudio.
+
+Muchos de mis amigos eran geniales: compartíamos consejos, recursos y practicábamos juntos para los exámenes y las entrevistas. Pero había un puñado que realmente quería entrar a medicina y, como el programa clasifica a los solicitantes principalmente en función de los resultados de la licenciatura, cuanto mejor se desempeñan tus amigos, más baja es tu posición en la clasificación para la selección.
+
+Así que, cerca de la época de solicitudes, algunos de nosotros íbamos a la biblioteca de la universidad a pedir prestados libros de texto para buscar los capítulos o los números de página que el profesor mencionó que vendrían en el examen.
+
+Y estaban arrancados. Ibas a buscar otra copia del libro en la biblioteca y esa página también estaba arrancada. Todas, eliminadas apresuradamente.
+
+No creía que alguien de nuestro grupo hubiera hecho eso, hasta que comenzaron las prácticas de entrevista. Los estudiantes empezaron a conseguir copias de las preguntas de años anteriores y mentían cuando otros preguntaban si las tenían. Vi a alguien dar una respuesta terrible y espantosa en una entrevista, y el otro estudiante le daba comentarios positivos y le sugería que dijera eso, palabra por palabra, durante la entrevista real. Fue un desastre y muchas relaciones se vinieron abajo o nunca volvieron a ser las mismas.
+---
+Mi "mejor amiga" y yo trabajamos juntas durante 3 años en un restaurante. Yo era la gerente nocturna y me llevaba muy bien con todos los empleados, especialmente con ella. Pasábamos tiempo juntas fuera del trabajo todo el tiempo; ella me acompañaba a la playa y a ferias con mis hijos, quienes la adoraban.
+
+Ella comenzó a salir con un sujeto del trabajo que se estaba convirtiendo poco a poco en un adicto a las drogas. Yo podía notarlo (mi tía adicta al crack hacía que fuera fácil de identificar), pero nadie más podía. Después de que él cometió errores por décima vez en una semana y comenzó a quedarse dormido de pie en el fregadero, mi jefe lo despidió un sábado.
+
+La noche del lunes siguiente, a la hora del cierre, él entró por la puerta trasera usando una máscara de esquí. Yo caminaba hacia la puerta principal para cerrarla cuando me agarraron por detrás y sentí algo frío contra mi cuello. Me tomó un segundo darme cuenta de que era un cuchillo. Él dijo: "dame el dinero", pero yo no podía moverme. Estaba literalmente paralizada por el miedo. Mi cerebro me gritaba que me moviera hacia la caja registradora, pero mis pies simplemente no respondían. Él gritó "dame el dinero" de nuevo, pero yo seguía congelada.
+
+Luego me arrastró hasta la caja, me obligó a abrirla, tomó un puñado de billetes de 20 dólares y salió corriendo por la parte trasera.
+
+¿Dónde estaba mi mejor amiga mientras todo esto sucedía? Convenientemente, en el baño. Yo todavía estaba en shock intentando explicarle a la policía por teléfono lo que acababa de pasar. Cuando colgué, ella preguntó qué había ocurrido y le dije que acababan de robarme a punta de cuchillo. Su respuesta exacta fue: "espero que nadie piense que tuve algo que ver con esto".
+
+¿Cómo? En resumen, encontraron al tipo (les dije que reconocí su voz) y él la delató sobre la planificación del robo (el "plan" era que ella le enviara un mensaje de texto avisándole cuando solo estábamos ella y yo en el edificio). Él no tenía por qué hacerlo, pero ella renunció al día siguiente y dejó de responder a mis mensajes.
+
+Cuando me enteré, me sentí destrozada. Era alguien que frecuentaba a mis hijos regularmente. Me diagnosticaron ansiedad y trastorno de estrés postraumático después del robo y todavía tengo recuerdos repentinos de aquel momento. Si alguien se acerca por detrás y me asusta, entro en pánico.
+
+¿La cantidad de dinero por la que valía mi vida para ellos? Unos 450 dólares.
+
+¿El castigo que recibieron? Él recibió 2 años de cárcel, con 10 años de sentencia suspendida y 1 año de libertad condicional.
+
+Ella recibió 1 año de libertad condicional.
+
+Tuve que renunciar al trabajo que tuve durante más de una década porque ya no podía soportar estar allí.
+---
+Todo esto comienza mal por mi parte, al seguir a mi novio a la misma universidad a la que él iba (él era un año mayor; aun así no me arrepiento, ya que amé mi universidad y todo lo demás de esos 4 años). Tuvimos una relación intermitente durante el primer semestre que estuve allí (de nuevo, ¡señales de alerta!). Mi nueva compañera de cuarto, que vivía cruzando el pasillo, se convirtió en mi "mejor amiga". Ella y mi novio realmente no se llevaban bien, pero no era un gran problema; solo un choque de personalidades y a ella no le gustaba cómo él me trataba con las tonterías de terminar y volver.
+
+Nuestra universidad tenía un periodo de invierno en enero. Mi novio vivía fuera del campus, así que estaba allí, y mi mejor amiga estaba tomando una clase; yo estaba en casa. Mi mejor amiga se sentía sola y no conocía a mucha gente en el campus durante ese periodo, así que le dije que saliera con los chicos de la fraternidad de mi novio, con quienes ella tenía una relación más o menos amistosa. Así que todos empezaron a salir.
+
+Y por eso, por supuesto, quiero decir que empezaron a tener relaciones.
+
+Regresé a la universidad e inmediatamente pude notar que las cosas estaban raras con mi mejor amiga (sin que yo lo supiera en ese momento, mi novio había tenido prácticamente toda nuestra relación para practicar cómo cubrir sus huellas y, para ese punto, ya era un mentiroso hábil y experimentado). En un par de semanas, todo salió a la luz: habían estado juntos y mi mejor amiga, de hecho, me dijo: "sabes cuánto he querido un novio; si fueras una buena amiga, me dejarías quedármelo". (Por qué yo aún quería salir con él en ese momento escapa a la comprensión de muchas, muchas, MUCHAS personas, incluida la mía, pero involucraba a un perro al que yo estaba profundamente apegada).
+
+Culpo a ambos por igual, y también lo hice en aquel entonces; no recuerdo haber estado tan enojada con ellos como devastada. Él estuvo disculpándose desde el principio; ella fue cruel y manipuladora (de nuevo, no intento decir que fue "culpa de la otra mujer", solo explico cómo sucedieron las cosas). Fue algo terrible y me sentí muy traicionada por ambos. Como era de esperar, he tenido muchos problemas de confianza y lealtad desde entonces.
+---
+Tuve un amigo desde la escuela secundaria hasta hace unos 4 años (aproximadamente 8 o 9 años de amistad en total). Era un amigo muy cercano y, un día, nos confesó a mi novio (ahora mi esposo) y a mí que su compañero de cuarto se mudaba con su novia y que él no podría pagar el alquiler ese mes. Mi novio y yo teníamos un contrato de arrendamiento a punto de vencer, así que decidimos ayudarlo y nos mudamos con él (faltaban 2 meses para que terminara nuestro contrato, es decir, 2 pagos de alquiler). Vivimos allí cerca de 2 meses y nos enteramos de que estábamos embarazados y esperando un bebé. Todo parecía ideal, ya que el compañero de cuarto nos había informado que deseaba cedernos el contrato de la casa para mudarse de vuelta con sus padres. Era una casa perfecta, con 3 habitaciones, 2 baños y mucho espacio.
+
+El día antes de reunirnos con el propietario, llegamos a casa y encontramos una notificación de desalojo en la puerta; todas las cosas del compañero de cuarto habían desaparecido. Lo llamé, pero no contestaba. Llamé al número del propietario que figuraba en la notificación y descubrí que el tipo nos había mentido y nunca le había dicho nada al dueño. El propietario ni siquiera quiso negociar con nosotros; simplemente dijo que teníamos 30 días para irnos. Resulta que el compañero de cuarto se había estado quedando con nuestro dinero del alquiler durante meses. Tuvimos que encontrar un lugar nuevo de forma inesperada en 30 días, pagar el primer mes, el último mes y un depósito de seguridad, además de mudarnos en pleno invierno de Michigan mientras estaba embarazada... fue un verdadero idiota.
+---
+En la universidad, mi mejor amiga y yo compartíamos una clase de arte con un chico con el que salía frecuentemente; nos estábamos conociendo para ver si había algo más entre nosotros. Salíamos, pasábamos el rato, nos divertíamos, etcétera. Todavía no había nada formal ni hablado, pero hablábamos a diario. Éramos más que amigos, aunque no una pareja formal.
+
+Un día pasé por su casa después de una clase matutina por una razón que ya olvidé. Toqué, nadie respondió, así que entré por la puerta, que estaba sin seguro (en un pequeño pueblo de Kansas, nadie cierra nada) para dejarle una nota (era antes de los celulares y los mensajes de texto, al menos para mí).
+
+Bueno, el bolso de ella estaba en la silla junto a la puerta. Nadie respondió cuando grité su nombre. Ni el de ella. Su auto estaba allí, su bolso estaba ahí, los dos estaban ahí... qué horror.
+
+Sin embargo, me vengué de ella casi 20 años después: me envió una solicitud de amistad en Facebook y rechacé a esa mujer. ¡Toma eso, Jessica!
+---
+Hace varios años me mudé a Florida. Casi inmediatamente después conocí a un amigo; era un gran sujeto (o eso pensaba) y constantemente pasábamos tiempo juntos, él me mostraba la ciudad, el estado, etcétera.
+
+Aproximadamente un año y medio después de conocerlo, me robó un par de tarjetas de crédito y acumuló cuentas muy altas. Desafortunadamente para mí, y esto lo sé ahora pero no en ese momento, simplemente pensé que llamar a la compañía de la tarjeta para reportar el robo y cancelar la cuenta también anulaba los cargos. Eso no es cierto: en realidad tienes que impugnar los cargos formalmente por separado, y solo tienes 60 días para hacerlo.
+
+Para cuando me di cuenta, ya era demasiado tarde. Intenté, en vano, llegar a un medio acuerdo con él para tratar de establecer un plan de pagos. Me rogó que no llamara a la policía. Ahora me arrepiento de no haberlo hecho. Creía que había pasado por una mala racha, que se recuperaría y que intentaría pagarme. Eso no sucedió. Aunque, más adelante, lo arrestaron por otra cosa y le dieron libertad condicional.
+
+Pensé que ese habría sido el mejor momento para intentar recuperar el dinero perdido (me había atrasado en los pagos y mi crédito comenzaba a sufrir. Tuve que abandonar la universidad por eso). En cambio, intenté llevarlo a un tribunal de reclamos menores. Entiendo que un tribunal civil no es penal, pero con él siendo ya un criminal convicto, pensé que tendría más posibilidades de que mi caso se viera mejor.
+
+Sin embargo, cuando llegamos a la corte, lo negó todo, dijo que todo había sido un regalo y me difamó por completo en audiencia pública. No entiendo cómo se le permitió salirse con la suya, pero el caso fue desestimado: no obtuve nada.
+
+Mi crédito sufrió durante años por eso. Con el tiempo, ahorré suficiente dinero para declararme en bancarrota y así deshacerme de esa deuda que no podía pagar (ni debería haber tenido que pagar). Nunca lo he perdonado realmente por lo que me hizo. Hasta donde sé, él todavía vive por la zona; afortunadamente no lo he visto en varios años. No sé ni qué le diría si llegara a encontrarme con él. La bancarrota eliminó esa deuda, así que no puedo (ni voy a) decir nunca que me debe nada monetariamente. Sin embargo, me debe una disculpa enorme. Pero, como dije, dudo seriamente de su sinceridad y probablemente no la aceptaría de todos modos. Creo que lo mejor es como está ahora: que simplemente se mantenga alejado de mí.
+---
+Tuve un amigo durante 20 años. Me llamó por la noche para pedirme prestados 3600 dólares. Era para su último año de carrera universitaria y le darían un aumento al graduarse. En ese momento yo ganaba bastante dinero y tenía mucho en el banco. Dijo que me lo devolvería en un año. Tres años después, tras la crisis económica, todavía no me había devuelto el dinero y me daba constantemente excusas patéticas como que "necesita tres vacaciones al año" y "está ahorrando para comprar una casa". Mi situación había cambiado y él no solo seguía negándose a pagarme, sino que seguía pidiendo favores y préstamos. Finalmente le dije que estaba sin dinero, a lo que él respondió "eres estúpido, nunca voy a pagarte ni a ayudarte". Corté mi amistad con él y he tenido muy poco contacto con él desde entonces. Él sí contrató a mi esposa en una empresa que administra. Supongo que debí haberlo visto venir.
+
+Me acababa de casar y tenía dos hijos. En otra ocasión me dijo "¡tus hijos no se están muriendo de hambre!". Siempre pensaba solo en sí mismo. No le importaba nadie más. Supongo que yo pensaba que él era divertido. Escuchaba sus historias estando con damas de la noche y finalmente fue suficiente. La última vez que hablé con él como amigo, me estaba pidiendo que le consiguiera marihuana. Le dije que me desviaba mucho de mi camino. Estaba demasiado ocupado. Él dijo "¿es mucho pedir, eh?". Yo le respondí "bueno, ¿qué harías tú por mí?". Cuando creces con un sujeto, simplemente parece demasiado difícil reconocer que en realidad no es un amigo. Me guardé esto por un tiempo. Ya no tengo amigos de la escuela secundaria porque todos eran así. Realmente debí haberme juntado con una mejor clase de personas.
+
+---
+Era mi mejor amigo desde hacía 12 años y vivíamos juntos; le confiaba mi vida. Crecimos juntos e incluso fuimos a la universidad a la par.
+
+Resultó que se estuvo acostando con mi novia (con la que yo llevaba 3 años) durante 6 meses antes de que yo me diera cuenta. Yo ya sabía que ella no era feliz en la relación.
+
+Durante esos 6 meses le confié mis problemas; él se hacía el tonto e intentaba consolarme. ¿Cómo puedes hacerle eso a un hermano y que te salga tan bien?
+
+Pensándolo en retrospectiva, debió haber sido obvio para mí. Todas las señales estaban ahí, pero uno simplemente no sospecha de su mejor amigo.
+
+Al final, ella me robó £1000 y él me robó mi ps2 junto con todos mis juegos, y se mudó con ella. El día que fui a golpear su puerta, ella me abrió y él estaba allí. Había cajas de mudanza por todas partes y él me lanzó una mirada desafiante y llena de desprecio. Yo estaba en estado de shock; en ese momento aún no sabía que me habían robado, así que simplemente me quedé ahí, totalmente paralizado. Luego, me di la vuelta y me fui.
+
+Ni siquiera la miré a ella. Sabía que las cosas iban de mal en peor desde hacía mucho tiempo, pero la traición de él fue brutal y yo no podía creerlo.
+
+Seis meses después, empecé a salir con otra chica y pasé un año increíble a su lado. Olvidé todo lo que había sucedido; era el amor de mi vida. Sin embargo, las cosas también se complicaron y, lamentablemente, falleció a causa de una convulsión. Recién ahora (5 años después) he logrado superar eso.
+
+Supongo que no tengo mucha suerte con las mujeres.
+
+Imagino que la mayoría de las historias serán similares a la mía, pero simplemente es increíble que tu mejor amigo pueda hacerte algo así. Me dejó destrozado durante muchísimo tiempo.
+
+
+---
+Tuve que salir de la ciudad por trabajo durante seis semanas. No era una distancia tan grande como para no poder volver cada fin de semana.
+
+Mi novia en aquel entonces era una psicópata oculta. Aún no se había manifestado, pero estaba en una espiral descendente. Estar juntos dos días seguidos y pasar cinco separados no era suficiente para ella.
+
+Mi mejor amigo tenía muchas novias; yo acudía a él por consejos, para desahogarme o simplemente para mantener la cordura y tener un compañero con quien hablar. Él me preguntó si podía hablar con ella sobre cualquier tema, pero le dije que no, que solo me diera consejos a mí. Al llegar a la quinta semana, mi novia tuvo una crisis nerviosa; me llamó diciendo que me odiaba y mencionó quejas que yo le había hecho a mi mejor amigo sobre ella, pero mucho más exageradas de lo que yo realmente había dicho. Yo le dije cuánto la amaba.
+
+Pensé que era imposible que fuera mi mejor amigo. Habíamos sido compañeros por más de una década y compartíamos historias todo el tiempo; creí que alguien más se estaba burlando de mí, así que lo enfrenté.
+
+"No le he dicho nada", afirmó él. Le echó la culpa a su exnovia loca. Mi novia de ese entonces lo confirmó: era su ex. Supuestamente, ella había hackeado su correo electrónico y enviado todos los registros de mis quejas fuera de contexto a mi novia "porque estaba preocupada por nuestra relación". Pensé que podía solucionar esto; soy una buena persona y era obvio que todo estaba fuera de contexto, así que intenté explicárselo todo. Mi amigo fingía estar molesto por su "ex loca". "Ella también está arruinando mi relación, hombre", decía. Él estaba con una chica diferente en ese momento, llevaban juntos más de un año; tenían problemas, pero yo creía que podrían superarlos. "La amo más que a nada", decía. "Quiero casarme con ella. Estoy cansado de las citas, ella es la indicada".
+
+Seguí acudiendo a mi amigo por consejos. Me decía que me relajara, que todo mejoraría cuando yo regresara y que me concentrara en mi trabajo. Fui ingenuo.
+
+Nada funcionaba. Ella decía que no podía soportar que yo estuviera fuera todo el tiempo (viajaba cinco horas a casa cada fin de semana y otras cinco horas de vuelta al trabajo). Decía que estaba "viendo a alguien más para mantenerse feliz". Yo le dije que estaba bien que saliera con alguien más, que ella seguía siendo mía. Le pregunté a mi mejor amigo y me respondió: "de ninguna manera, hombre, no está viendo a nadie; no puede darte un nombre, así que no es cierto. Solo está jugando contigo, mantente fuerte".
+
+Al regresar, lidié con su actitud de psicópata durante un par de semanas. Ella comenzó a quererme de nuevo. Yo intentaba hacer lo correcto; me sentía mal por haberla dejado sola, aunque no fuera por mucho tiempo.
+
+No hubo ningún hackeo. No hubo explicación. Mi mejor amigo me mintió en la cara. Él era el "sujeto al que ella estaba viendo" y ambos consumían muchas drogas. Mi mejor amigo nos mintió a mi novia y a mí para que ella se molestara y me dejara de querer, así él podía salir de fiesta con ella. Mientras tanto, me decía que quería casarse con su novia actual y culpaba de todos mis problemas a una de sus ex. Sus mentiras duraron semanas. Yo estaba molesto, pero él seguía siendo mi mejor amigo.
+
+Cuando lo descubrí, él me dijo: "lo siento, ahora estoy tratando de mantener distancia con tu novia, los sentimientos se interpusieron hace dos semanas", pero aseguró que no había pasado nada. Por cierto, añadió: "ella te engañó justo antes de tu cumpleaños". Ahí es donde debí haber cortado todo, pero fui ingenuo. Yo respondí: "no, quiero hacer lo correcto, amo a esta chica, me siento mal por lo mal que está ella", etc. (Ella no había terminado sus estudios, no tenía trabajo y estaba sufriendo, pero definitivamente podría haber salido adelante si lo hubiera intentado). Él me preguntaba mucho: "¿cómo lo haces, cómo te mantienes fuerte?". Yo siempre le explicaba que quería hacer lo correcto y que amaba a esa chica. Fui estúpido. Era adicto a ella.
+
+Intenté pasar todo el tiempo posible con ella. Mi mejor amigo seguía hablando de cómo quería casarse con su novia y de cómo le había contado todo lo que pasó entre él y mi novia. Decía que quería que nuestras vidas volvieran a la normalidad.
+
+Pasaron unas semanas. Todo seguía siendo difícil. Ella me trataba mal, pero las cosas iban mejorando poco a poco. Ahora yo era honesto con todo y ella decía que también lo era. Finalmente, ella se quebró; me amaba de nuevo y me confesó que "verlo a él" significaba acostarse con él. Se estaba acostando con mi mejor amigo mientras yo estaba fuera. Él me mentía en la cara diciendo que quería casarse con su novia, mientras engañaba a su pareja con la mía, y ambos me ocultaban la verdad. Me fui de la ciudad por dos semanas, distante y destrozado. Ella se molestó y peleamos. Se había estado acostando con él todo el tiempo, incluso cuando yo había regresado. Todo el tiempo.
+
+Él era mi mejor amigo, decía que quería ayudarme y siempre me ofrecía su apoyo. Usó todo lo que le conté en confianza mientras yo le pedía consejos sentimentales para ponerla en mi contra durante meses. Todos los consejos que me dio estaban diseñados para que ella me odiara más. "Prepárale una cena, te daré una receta para una salsa de carne increíble, hazla con vino tinto". Ella odiaba esa salsa y el vino tinto. Él se la estaba acostando y dándole drogas gratis después de que yo había pasado un año con ella, todo mientras me mentía a la cara, mirándome a los ojos y diciéndome cuánto lo sentía y cómo arreglar las cosas. Ambos me mintieron.
+
+Ahora ambos son adictos; mi ex tiene una deuda enorme, vive con sus padres y ambos tienen trabajos mediocres en ventas. Yo recibí un bono de $4000 después de mis seis semanas fuera de la ciudad. Todavía estoy enojado por esto; mi corazón late con fuerza en este momento. He perdido mucha fe en la humanidad y la confianza incondicional que antes tenía en que las personas querían ser buenas entre sí. No salgas con una chica que sea tan insegura que necesite la atención de otros hombres en las fiestas para ser feliz, pero que se altere cuando tú apenas miras a otra mujer, aunque sea una anciana tomando tu pedido en un restaurante.
+
+---
+Cuando estaba en el grado 11, conocí a mi primera novia. Éramos realmente geniales juntos. Aunque tenía que conducir 45 minutos para verla, siempre esperaba con ansias pasar tiempo con ella porque era increíble.
+
+Sin embargo, unos 4 meses después de iniciada la relación, mi mejor amigo comenzó a hablar con mi novia. No vi nada malo en ello porque confiaba tanto en él como en ella. Gran error. Una noche, mi novia me envió un mensaje instantáneo: "¿Cómo pudiste hacerme esto?". Mi corazón se hundió de inmediato. No tenía idea de qué estaba hablando. Le pregunté repetidamente qué había hecho, pero ella insistía en que me estaba haciendo el tonto. La llamé por teléfono para hablar. Me dijo que mi mejor amigo le había contado que yo estaba coqueteando con otra chica en mi escuela.
+
+No importaba cuánto lo intentara, no podía convencerla de lo contrario. Terminó conmigo. Aproximadamente un mes después, fui al pueblo donde ella vivía. Un amigo y yo íbamos a pasar el rato con unos conocidos en común de mi ex. Fuimos a su casa y, ¿quién estaba ahí? Mi mejor amigo y mi ex, ella sentada en su regazo. Al parecer, mi "mejor amigo" le había pedido salir poco después de que terminara conmigo, y ella había aceptado. Ella confiaba en él porque él me había "delatado". Hasta el día de hoy, esta es la mayor traición que he sentido.
+
+
+
+
 
  """
     )
@@ -721,6 +874,7 @@ Hola.
         # Exportar el video final
     final_video.write_videofile(
         "video_con_audio_y_subtitulos(esp).mp4",
+        #"Test(esp).mp4",
         fps=60,
         codec="libx264",
         bitrate="20000k",  # Aumentado para mejor calidad
@@ -794,7 +948,7 @@ Hola.
     # Limpiar archivos de audio temporales
     print("Limpiando archivos temporales...")
     for file in os.listdir("audio_esp"):  # Cambiado de "audio" a "audio_esp"
-        if file.endswith(".mp3"):
+        if file.endswith((".mp3", ".wav")):
             max_attempts = 3
             for attempt in range(max_attempts):
                 try:

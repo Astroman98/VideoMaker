@@ -9,3 +9,8 @@ image/*.jpg
 audio_eng/*.mp3
 audio_esp/*.mp3
 *.sfk
+.env.txt
+*.env
+audio/*.wav
+audio_eng/
+audio_esp/

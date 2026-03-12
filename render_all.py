@@ -87,7 +87,7 @@ def cleanup_directory(directory):
 if __name__ == "__main__":
     # Primero obtenemos todas las configuraciones
     config_esp, config_eng = obtener_configuraciones()
-    
+
     # Configurar procesos con mayor prioridad de recursos
     process_spanish = multiprocessing.Process(
         target=run_spanish,
@@ -99,13 +99,13 @@ if __name__ == "__main__":
         args=(config_eng,),
         name="English_Render"
     )
-    
+
     # Iniciar procesos
     process_spanish.start()
     process_english.start()
-    
+
     # Esperar finalización
     process_spanish.join()
     process_english.join()
-    
+
     print("Renderizado completado")
