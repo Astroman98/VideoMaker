@@ -86,6 +86,7 @@ def _azure_tts_to_wav(text: str, output_wav: str, voice: str, rate: str) -> None
 """.strip()
 
     result = synthesizer.speak_ssml_async(ssml).get()
+    del synthesizer
 
     if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
         return
