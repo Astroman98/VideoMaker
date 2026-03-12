@@ -204,96 +204,76 @@ def _azure_tts_to_mp3(text: str, output_mp3: str, voice: str, rate: str) -> None
     raise RuntimeError(f"TTS falló: {result.reason}")
 
 
-import time
-
-def _azure_tts_with_retries(text: str, output_file: str, voice: str, rate: str, max_tries: int = 8) -> None:
-    last_err = None
-    for attempt in range(1, max_tries + 1):
-        try:
-            _azure_tts_to_mp3(text, output_file, voice, rate)
-            return
-        except RuntimeError as e:
-            msg = str(e)
-            last_err = e
-
-            is_429 = "Too many requests (429)" in msg or "429" in msg
-            is_timeout = "Timeout while synthesizing" in msg or "RTF" in msg
-
-            if not (is_429 or is_timeout) or attempt == max_tries:
-                raise
-
-            base = 1.5
-            sleep_s = min(12.0, base * attempt)
-            time.sleep(sleep_s)
-
-    raise last_err
-
-
-
-async def generate_audio_for_sentence(sentence, output_file, voz="en-US-ChristopherNeural", rate="+7%"):
-    await asyncio.to_thread(_azure_tts_to_mp3, sentence, output_file, voz, rate)
-    print(f"Audio guardado: {output_file}")
-
-
-
-import time
-import random
 import asyncio
 
-class RateLimiter:
-    def __init__(self, min_interval_sec: float):
-        self.min_interval = float(min_interval_sec)
-        self._lock = asyncio.Lock()
-        self._next_time = 0.0
 
-    async def wait(self):
-        async with self._lock:
-            now = time.monotonic()
-            if now < self._next_time:
-                await asyncio.sleep(self._next_time - now)
-            self._next_time = time.monotonic() + self.min_interval
+def _azure_tts_single(sentences: list, output_file: str, voice: str, rate: str) -> list:
+    """
+    Genera un único audio con todas las oraciones en una sola llamada a Azure TTS.
+    Usa SSML bookmarks para obtener el timestamp exacto de inicio/fin de cada oración.
+    Retorna lista de (start_sec, end_sec) por oración.
+    """
+    key = os.environ.get("AZURE_SPEECH_KEY")
+    region = os.environ.get("AZURE_SPEECH_REGION")
 
-def _is_throttle_or_timeout(err: str) -> bool:
-    err = (err or "").lower()
-    return (
-        "too many requests" in err
-        or "(429)" in err
-        or "websocket upgrade failed" in err
-        or "timeout while synthesizing" in err
+    if not key or not region:
+        raise RuntimeError("Faltan AZURE_SPEECH_KEY o AZURE_SPEECH_REGION en el entorno.")
+
+    speech_config = speechsdk.SpeechConfig(subscription=key, region=region)
+    speech_config.speech_synthesis_voice_name = voice
+    speech_config.set_speech_synthesis_output_format(
+        speechsdk.SpeechSynthesisOutputFormat.Riff48Khz16BitMonoPcm
     )
 
-# Si estás en F0, usa ~3.2s o más.
-# Si estás en S0, puede ser menor, pero igual conviene limitar un poco y tener retry.
-TTS_LIMITER = RateLimiter(min_interval_sec=3.2)
+    audio_config = speechsdk.audio.AudioOutputConfig(filename=output_file)
+    synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
 
+    lang = _guess_lang_from_voice(voice)
 
-
-
-async def generate_all_audios(sentences, seg_index, voz="en-US-ChristopherNeural", rate="+5%"):
-    audio_files = []
-    os.makedirs("audio_eng", exist_ok=True)
-
+    # Insertar un bookmark después de cada oración (excepto la última)
+    # El bookmark dispara cuando la oración anterior termina de sintetizarse
+    ssml_parts = []
     for i, sentence in enumerate(sentences):
-        file_path = f"audio_eng/seg{seg_index}_sentence_{i}.wav"
-        await generate_audio_for_sentence(sentence, file_path, voz=voz, rate=rate)
-        audio_files.append(file_path)
+        ssml_parts.append(escape(sentence))
+        if i < len(sentences) - 1:
+            ssml_parts.append(f'<bookmark mark="sent_{i}"/>')
 
-    return audio_files
+    ssml = f"""<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="{lang}">
+  <voice name="{voice}">
+    <prosody rate="{rate}">{" ".join(ssml_parts)}</prosody>
+  </voice>
+</speak>""".strip()
 
+    bookmark_offsets = {}
 
+    def on_bookmark(evt):
+        bookmark_offsets[evt.text] = evt.audio_offset / 10_000_000
 
-def generate_subtitle_entries(sentences, durations):
-    """
-    A partir de las duraciones reales de cada audio, genera una lista de tuplas:
-      (inicio, fin, oración)
-    para saber cuándo deben aparecer los subtítulos dentro del segmento.
-    """
-    entries = []
-    start = 0
-    for sentence, d in zip(sentences, durations):
-        entries.append((start, start + d, sentence))
-        start += d
-    return entries
+    synthesizer.bookmark_reached.connect(on_bookmark)
+
+    result = synthesizer.speak_ssml_async(ssml).get()
+
+    if result.reason == speechsdk.ResultReason.Canceled:
+        details = result.cancellation_details
+        msg = f"TTS cancelado: {details.reason}"
+        if details.error_details:
+            msg += f" | {details.error_details}"
+        raise RuntimeError(msg)
+
+    if result.reason != speechsdk.ResultReason.SynthesizingAudioCompleted:
+        raise RuntimeError(f"TTS falló: {result.reason}")
+
+    total_duration = result.audio_duration.total_seconds()
+
+    # Calcular (start, end) para cada oración
+    # sent_i bookmark marca el FIN de la oración i → es el INICIO de la oración i+1
+    timestamps = []
+    for i in range(len(sentences)):
+        start = bookmark_offsets.get(f"sent_{i - 1}", 0.0) if i > 0 else 0.0
+        end = bookmark_offsets.get(f"sent_{i}", total_duration)
+        timestamps.append((start, end))
+
+    return timestamps
 
 
 def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_speed=1.8):
@@ -458,43 +438,40 @@ def solicitar_nombre_background():
 
 async def process_segment(segment_text, res, seg_index):
     """
-    Procesa un segmento con soporte para subtítulos con scroll enmascarado.
+    Procesa un segmento generando un único audio para todas las oraciones.
+    Usa SSML bookmarks para sincronizar subtítulos con precisión.
     """
-    # Dividir en oraciones
     sentences = split_sentences(segment_text)
     print(f"Segmento {seg_index} – oraciones:")
     for i, s in enumerate(sentences, 1):
         print(f"  {i}: {s}")
-    
-    # Generar audios por oración
-    audio_files = await generate_all_audios(sentences, seg_index)
-    audio_clips = []
-    durations = []
-    
-    for file in audio_files:
-        clip = AudioFileClip(file)
-        new_duration = clip.duration - 0.6 if clip.duration > 0.6 else clip.duration
-        clip = clip.subclipped(0, new_duration)
-        audio_clips.append(clip)
-        durations.append(new_duration)
-    
-    seg_duration = sum(durations)
-    
-    # Crear TextClips para cada oración, con soporte para scroll enmascarado
+
+    os.makedirs("audio_eng", exist_ok=True)
+    audio_file = f"audio_eng/seg{seg_index}.wav"
+
+    timestamps = await asyncio.to_thread(
+        _azure_tts_single, sentences, audio_file, "en-US-ChristopherNeural", "+5%"
+    )
+    print(f"Audio guardado: {audio_file}")
+
+    full_audio = AudioFileClip(audio_file)
+    total_duration = full_audio.duration
+
+    # Ajustar el fin de la última oración a la duración real del audio
+    last_start, _ = timestamps[-1]
+    timestamps[-1] = (last_start, total_duration)
+
     text_clips = []
-    cumulative = 0
-    for sentence, d in zip(sentences, durations):
+    for sentence, (start, end) in zip(sentences, timestamps):
+        d = max(end - start, 0.1)
         txt_clip = create_scrolling_text_clip(
             sentence=sentence,
             res=res,
             duration=d
-        ).with_start(cumulative)
-        
+        ).with_start(start)
         text_clips.append(txt_clip)
-        cumulative += d
-    
-    segment_audio = concatenate_audioclips(audio_clips)
-    return text_clips, segment_audio, seg_duration
+
+    return text_clips, full_audio, total_duration
 
 
 
