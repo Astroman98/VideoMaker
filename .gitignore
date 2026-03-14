@@ -14,3 +14,4 @@ audio_esp/*.mp3
 audio/*.wav
 audio_eng/
 audio_esp/
+keys.py

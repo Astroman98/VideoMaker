@@ -11,6 +11,7 @@ from moviepy.audio.AudioClip import AudioArrayClip
 from moviepy import concatenate_audioclips
 import asyncio
 import os
+import keys
 import numpy as np
 from xml.sax.saxutils import escape
 import azure.cognitiveservices.speech as speechsdk

@@ -1,6 +1,7 @@
 import asyncio
 import re
 import os
+import keys
 import numpy as np
 import textwrap
 from moviepy import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip, ColorClip
@@ -234,6 +235,63 @@ def _azure_tts_single(sentences: list, output_file: str, voice: str, rate: str) 
     return timestamps
 
 
+def _trim_sentence_silences(audio_file: str, timestamps: list,
+                             silence_db: float = -38.0, keep_ms: int = 90) -> list:
+    """
+    Recorta el silencio final de cada chunk de oración en el audio.
+    Sobreescribe el archivo de audio con la versión recortada.
+    Retorna los nuevos timestamps ajustados.
+    """
+    import wave
+
+    with wave.open(audio_file, 'rb') as wf:
+        sample_rate = wf.getframerate()
+        n_channels = wf.getnchannels()
+        sampwidth = wf.getsampwidth()
+        raw = wf.readframes(wf.getnframes())
+
+    audio = np.frombuffer(raw, dtype=np.int16).copy()
+    if n_channels > 1:
+        audio = audio.reshape(-1, n_channels)
+
+    # Umbral en amplitud lineal (PCM 16-bit: max = 32767)
+    amp_threshold = (10 ** (silence_db / 20.0)) * 32767
+    keep_samples = int(sample_rate * keep_ms / 1000)
+    chunk_size = int(sample_rate * 0.01)  # ventanas de 10 ms
+
+    def find_speech_end(chunk):
+        mono = chunk[:, 0] if chunk.ndim > 1 else chunk
+        n = len(mono) // chunk_size
+        for i in range(n - 1, -1, -1):
+            if np.max(np.abs(mono[i * chunk_size:(i + 1) * chunk_size])) > amp_threshold:
+                return min((i + 1) * chunk_size + keep_samples, len(chunk))
+        return min(keep_samples, len(chunk))
+
+    trimmed_chunks = []
+    new_timestamps = []
+    cursor = 0.0
+
+    for start_sec, end_sec in timestamps:
+        s = int(start_sec * sample_rate)
+        e = int(end_sec * sample_rate)
+        chunk = audio[s:e]
+        cut = find_speech_end(chunk)
+        trimmed_chunks.append(chunk[:cut])
+        duration = cut / sample_rate
+        new_timestamps.append((cursor, cursor + duration))
+        cursor += duration
+
+    combined = np.concatenate(trimmed_chunks)
+
+    with wave.open(audio_file, 'wb') as wf:
+        wf.setnchannels(n_channels)
+        wf.setsampwidth(sampwidth)
+        wf.setframerate(sample_rate)
+        wf.writeframes(combined.tobytes())
+
+    return new_timestamps
+
+
 def create_scrolling_text_clip(sentence, res, duration, font_size=60, scroll_speed=1.8):
     """
     Crea un TextClip con efecto de scroll si el texto supera las dos líneas,
@@ -412,12 +470,17 @@ async def process_segment(segment_text, res, seg_index):
     )
     print(f"Audio guardado: {audio_file}")
 
+    # Ajustar el fin de la última oración a la duración real del audio,
+    # luego recortar silencios finales de cada oración y resincronizar
+    full_audio_tmp = AudioFileClip(audio_file)
+    last_start, _ = timestamps[-1]
+    timestamps[-1] = (last_start, full_audio_tmp.duration)
+    full_audio_tmp.close()
+
+    timestamps = await asyncio.to_thread(_trim_sentence_silences, audio_file, timestamps)
+
     full_audio = AudioFileClip(audio_file)
     total_duration = full_audio.duration
-
-    # Ajustar el fin de la última oración a la duración real del audio
-    last_start, _ = timestamps[-1]
-    timestamps[-1] = (last_start, total_duration)
 
     text_clips = []
     for sentence, (start, end) in zip(sentences, timestamps):
@@ -485,6 +548,7 @@ async def main():
 
 
 
+
 My friend was dating a girl who I could tell just didn't like me, but at least we were civil to one another, until the camping trip on the May 24 holiday weekend. She was adamant about keeping our alcohol separate, that was fine. I had my beer, they had their Mike's Hard Lemonades, fine. Then I got up early on the first morning and made pancakes for everyone. Why? Because that's just how I roll. When the campers rolled out of their tents to the smell of apple cinnamon pancakes and campfire coffee, she was the only one to flip out. I'd gone into her cooler and used her margarine. My buddy just looked pained and tried to keep the peace as I tossed her a couple of bucks and apologized. Her reaction was to grab a lock from his gym bag and lock "their tent" with "their booze" and "their food". Later, he came to me and asked if he could borrow the car, so that they could run into town, get some personal items and have some words about being a bit easier with the other campers. I said okay, and handed him the keys. When they returned hours later, the tank was empty, and the field kitchen (a wooden box with straps called a wannigan with plates, cutlery, pots and pans, etc.) was missing from the back of the station wagon. We searched the camp, nothing. It was my dad's and had been handed down in the family for generations. I drove off to fill the tank and buy a new tub of margarine, and was halfway down the country road when I saw the wannigan on the side of the road, smashed in the ditch. There were marks along the back panels beside the flattened down seats where one of them had clearly pushed it out the back of the moving car.
 
 After piling it all, stunned, piece by piece back into the wagon, I gassed up and drove back, then packed up. Not a word was said by anyone, until I tore up the camping permit and peeled out with their shouts behind me in the dust.
@@ -499,6 +563,144 @@ One time I had a small social gathering (about 6 or 7 people) and my new smartph
 Later, he was at a mutual friend's party. Her 80GB iPod goes missing. Some other friends and I were suspicious that it was him, so the next day we called up the local pawn shop and described the iPod. The pawnshop guy said he got one that day. Sure enough, it was under his name. The pawnshop owner offered to call the cops, but we declined. We approached him and told him we knew. He tried to deny it, but we managed to shame him into admitting it.
 
 Screw people who steal from friends.
+---
+Years ago, when I did a health sciences undergraduate degree, most of the cohort was determined to get into medical school. Our medical school program mainly accepted students from only our competitive undergraduate course, due to subject prerequisites. We all knew each other and were friendly, hanging out together and forming study groups.
+
+Many of my friends were great. We shared tips, resources, practiced exams, and interviews together. But there were a handful who really wanted to get into medical school, and since the program ranks applicants mainly based on undergraduate results, the better your friends perform, the lower your ranking is for selection.
+
+So near application time, some of us would head off to the university library to borrow textbooks to find chapters or page numbers that the lecturer mentioned would be on the exam.
+
+And they would be ripped out. You'd go and find another library copy of the textbook, and that page would be ripped out too. All of them, totally removed in a hurry.
+
+I didn't believe that someone from our cohort did it until interview practice began. Students began obtaining copies of the questions from previous years and lying when others asked if they had them. I saw someone give a terrible, awful interview answer, and the other student would give them glowing feedback and inform them they should say that, word-for-word, during the interview. It was a mess and a lot of relationships fell apart, or were never the same again.
+---
+My "best friend" and I worked together for 3 years at a restaurant. I was the night manager and was really cool with all of the employees, but especially her. We hung out outside of work all the time; she went with me to the beach and carnivals with my kids, who adored her.
+
+She started dating this guy at work who was slowly becoming a drug addict. I could see it, but no one else could. After he messed up for the 10th time in a week and started nodding out at the sink, he was fired by my boss on a Saturday.
+
+The following Monday night, at closing time, he came in the back door wearing a ski mask. I was walking towards the front door to lock it when I was grabbed from behind and felt something cold against my neck. It took me a second to realize it was a knife. He said "get me the money," but I couldn't move. I was literally paralyzed with fear. My brain was screaming at me to move towards the register, but my feet just wouldn't move. He screamed "give me the money" again, but I was frozen.
+
+He then dragged me to the register, made me open it, grabbed a fistful of 20s, and ran out the back.
+
+My best friend at the time this whole thing went down? Conveniently, she was in the bathroom. I was still in shock trying to explain to the police on the phone what had just happened. When I hung up the phone, she asked what had happened and I told her I had just been robbed at knifepoint. Her exact response was, "I hope no one thinks I had anything to do with this."
+
+Umm, what? So, long story short, they found the guy (I told them I recognized his voice) and he told them about her involvement in the setup. The setup was her texting him an "all clear" when only she and I were in the building. He didn't have to tell them, though; she quit the next day and stopped replying to my texts.
+
+When I found out, I was heartbroken. This is someone who was around my kids regularly. I was diagnosed with extreme anxiety and PTSD after being robbed and still have flashbacks randomly. If someone comes up behind me and startles me, I panic.
+
+The amount of money my life was worth to them? $440.
+
+The punishment they received? He got 2 years in jail and 1 year of probation.
+
+She got 1 year of probation.
+
+I had to quit the job I had held for over a decade because I couldn't stand being in there anymore.
+---
+This all starts out poorly by me following my boyfriend to the same college he went to (he was a year older; I still don't regret it after all as I loved my school and everything else about those 4 years). We were a bit off and on that first semester I was there (again, red flags!). My new across-the-hall-mate in my dorm became my "best friend." She and my boyfriend didn't really like each other, but it wasn't a huge deal; it was just a personality clash, and she didn't like how he treated me with the off and on crap.
+
+Our school had a winter term in January. My boyfriend lived off-campus so he was there, and my best friend was taking a class; I was home. My best friend was lonely and didn't know many other people on campus for the winter term, so I told her to hang out with the boys in my boyfriend's fraternity house, whom she had been friendly with. So, they all started hanging out.
+
+And by that, of course, I mean they started hooking up.
+
+I got back to school and I immediately could tell things were weird with my best friend (unbeknownst to me at the time, my boyfriend had had basically our entire relationship to practice covering his tracks and was a smooth and practiced liar by this point). Within a couple of weeks, it all came out that they had been hooking up and my best friend actually told me, "You know how much I've wanted a boyfriend; if you were a good friend, you'd let me have him." (Why I still wanted to date him at this point is beyond many, many people's comprehension, including mine, but it did involve a dog that I was beyond attached to).
+
+I do fault them both equally, and did at the time too; I don't remember being mad at either of them as much as I was just devastated. He was apologetic from the start; she was mean and manipulative (again, not trying to say it was the other woman's fault, just explaining how it all went down). It totally sucked and I felt so betrayed by both of them. Unsurprisingly, I have had a lot of trust and loyalty issues since.
+---
+I had a friend from high school until about 4 years ago (about 8 to 9 years total of friendship). He was a very close friend, and one day he confided in my boyfriend (now husband) and me that his roommate was moving out to live with his girlfriend and he wouldn't make rent that month. My boyfriend and I had an apartment lease ending, so we decided we could be of help and moved in (2 months before our lease was up, 2 rent payments). We lived there for about 2 months and found out we were pregnant and having a baby, which seemed like a happy scenario as the roommate had informed us he wished to turn over the lease for the house to us so he could move back in with his parents. It was a perfect 3-bedroom house with 2 bathrooms and plenty of space. The day before we were set to meet up with the landlord, we came home to an eviction notice on the door and all of the roommate's stuff was moved out. I called him, but there was no answer. I called the number on the eviction notice from the landlord and found out he lied and never told the landlord anything; he wouldn't even work with us at all, just said we had 30 days to get out. The roommate had been pocketing our rent money for months. We had 30 days to unexpectedly find a new place, pay first and last month's rent plus a security deposit, and move in the middle of a Michigan winter while I was pregnant. What a terrible person.
+
+---
+While freelancing on a sweet gig that came out of the blue, I found out that I would be working with Sean, a guy who was in my group at a former ad agency. Awesome, a friendly face.
+
+Sean was a geek. No one liked him, and as his associate creative director (supervisor), I looked out for him. He seemed to try hard, and I didn't understand why everyone excluded him. During two rounds of layoffs, I went to bat for the guy and saved his job, promising to work with him. He was always busy, and soon after, I moved on to a new job. So I looked forward to working with him some more and proving those mean jerks from our old agency wrong.
+
+While working this freelance job, I sensed something was wrong soon after it began. Sean had no ideas. None! He literally brought a blank pad in day after day. Excuses were that he was tired, the assignment confused him, etc. I was nervous, but I was stuck. So, since we were on a team, I shared my ideas, our only ideas, with him. We had to present an hour after lunch.
+
+During lunch, I had to go to a doctor's appointment with my wife, who was seriously ill. On my way back to the office, the cab I was in had an accident. A jerk in a Lexus slammed into us. No one was hurt, but it totaled both cars. Further, I didn't feel comfortable leaving the cabbie, as he was foreign and spoke little English. The guy who hit us was ranting, so I stayed to give a statement to the police. I called Sean to explain and asked if he minded handling the meeting and asked him to relay my situation.
+
+Then, this guy presented my work, claimed it was all his, and they sent me home because 'Sean nailed it.'
+
+Salt in the wound? Took 9 months to get paid for the time I did put in. All along, I tried to explain, but no one believed me. He copied my notes in his own writing and submitted them as proof. As far as they were concerned, I was riding this guy's coat-tails. I coulda kicked his behind for a week without getting bored.
+
+Two months later, he was found out when he tried it again. Dozens of former coworkers called to rub my nose in it. 'Still think we're just picking on Sean?' I learned that sometimes people are shunned because they deserve it.
+
+---
+I had a friend for 20 years. He called me at night to ask to borrow $3,600. It was for his last year of a degree and would get him a raise when he graduated. At the time, I was making quite a bit of money and had lots in the bank. He said he would pay me back in a year. Three years later, after the crash, he still had not paid me back and was constantly giving me lame excuses like he "needs three vacations a year" and "is saving to buy a house." My situation had changed, and he was still not only refusing to pay me back but still asking for favors and loans. I finally said I was broke, to which he replied, "You are stupid, I am never going to pay you back or help you out." I dropped him as a friend and have had very little contact with him since. He did hire my wife at a company he manages. I guess I should have seen this coming.
+
+I had just gotten married and had two kids. Another time he said, "Your kids aren't starving!" He always just thought of himself. Could not care about anybody else. I guess I thought he was funny. Listened to his escort stories and finally enough was enough. The last time I talked to him as a friend, he was asking me to get him some marijuana. I said it was way out of my way. I was too busy. He said, "Too much to ask for, eh?" I said, "Well, what would you do for me?" When you grow up with a guy, it just seems it is too hard to recognize he isn't really a friend. Kept this inside for a while. Don't have any friends from high school anymore because they were all like this. Should have hung out with a better class, really.
+
+---
+My best friend of 12 years, we were living together. I trusted him with my life, I mean we grew up together, we even went to college together.
+
+Turned out he was seeing my girlfriend of 3 years for 6 months before it dawned on me; I knew she was unhappy with the relationship.
+
+I confided in him during those 6 months and he would play dumb to it and try to console me. How do you do that so well to a bro?
+
+I mean thinking back on it, it should have been obvious to me, all the signs were there, but you just don't suspect your best friend.
+
+In the end, she stole £1,000 from me and he stole my PS2, all my games and moved in with her. The day I came banging on her door, she answered the door with him, moving boxes everywhere and he had this cold stare on him and I was just in shock. I didn't know they had stolen from me at the time, so I just stood there in total shock, I turned around and walked away.
+
+I didn't even look at her, I knew things were going south with her for a long time, but he really betrayed me and I couldn't believe it.
+
+6 months later I got together with another girl, spent an incredible year with her and forgot about everything that happened. She was the love of my life, but it went south with her too and unfortunately she died of a seizure and only now (5 years since) have I gotten over that.
+
+Not much luck with women I guess.
+
+I imagine most stories will be similar to mine, but man, just can't believe your best bro could do that. It really crippled me for the longest time.
+---
+Several years ago, I moved to Florida. Almost immediately after I met a friend. He was a great guy (so I thought) and we would constantly hang out, he would show me around the town, this state, etc.
+
+About a year and a half into knowing him, he stole a couple of my credit cards and racked up really big bills. Unfortunately for me, and I know this now but didn't then, I simply thought calling the credit card company to report your card stolen and canceling the account also vacated the charges. That's not true; you actually have to formally contest the charges separately, and you only have 60 days.
+
+By the time I realized this, it was too late. I tried, in vain, to semi-reconcile with him to try to get a payment plan. He begged me not to call the police. I regret now that I didn't. I did believe that he had fallen on hard times, and that he would get back on his feet and try to repay me. That didn't happen. Although, later on, he did get arrested for something else and was put on probation.
+
+I figured that would have been the best time to try to recoup the money lost (I had fallen behind on these payments and my credit was starting to suffer; I had to drop out of college because of that). I did try instead to take him to small claims court. I do realize that civil court is not criminal, but with him now being a convicted felon, I might stand a better chance at looking much better.
+
+Instead, when we got to court, he denied everything, said everything was a gift, and completely slandered me in open court. Why he was allowed to get away with it is beyond me, but that case was dismissed; I got nothing.
+
+My credit suffered for years because of that. I eventually did save up enough money to file for bankruptcy just to get rid of that debt that I couldn't repay (nor should I have had to). I have never really forgiven him for what he did to me. As far as I know, he still lives around; luckily, I haven't seen him in several years. I don't know what I would even say if I ever did encounter him. The bankruptcy did eliminate that debt, so I cannot (and will not) ever say he owes me anything monetarily. However, he owes me a huge apology, but like I said, I would seriously doubt the sincerity of it and likely wouldn't accept it anyway. I think the best thing is as it is now: he just stays away from me.
+---
+In college, my best friend and I had an art class together with a guy I was hanging out with on the regular, getting to know each other to see if there was anything more there. He and I hung out, messed around, had fun, etc. Nothing formal or spoken just yet, but we communicated daily. We were more than friends, but not a dedicated couple.
+
+One day I stopped by his house after a morning class for a reason that I forget. I knocked and got no answer, so I let myself in through the unlocked door (small Kansas town, nobody locks anything) so I could leave him a note.
+
+Well, her purse was on the chair by the door. Nobody answered when I called out his name, or hers, even though his car and her purse were there. They were clearly together, which was just awful.
+
+I got back at her though, almost 20 years later; she sent me a friend request on Facebook and I denied that woman. Take that, Jessica.
+---
+I had to go out of town for work for 6 weeks. It wasn't far enough that I couldn't come back every weekend.
+
+My girlfriend at the time was secretly unhinged. It hadn't shown yet, but she was on a downward spiral. Two solid days together with five days apart wasn't good enough for her.
+
+My best friend had a lot of girlfriends, so I would go to him for advice, to vent, you know, to keep it together, to have a buddy to talk to. He asked if he could talk to her about anything, and I said no, just give me advice. Fast forward to week 5. My girlfriend had a meltdown and called me saying she hated me, citing complaints I had made about her to my best friend, but way amplified from what I had said. I told her how much I loved her.
+
+There was no way it could be my best friend. We'd been buddies for over a decade. We shared stories all the time. Somebody was playing games with me. I confronted him.
+
+"I haven't said a thing to her," my friend told me. He blamed it on his unstable ex, and my girlfriend at the time confirmed it was her. She supposedly hacked his email, sending out-of-context logs of my complaints to my girlfriend "because she was worried about our relationship." I thought I could recover from this. I'm a good person, and it was clearly out of context, so I tried explaining everything to her. My friend was upset about his "unstable ex," saying, "She's messing with my relationship too, man." He was with a different girl, together for over a year, and despite their troubles, I believed he'd pull through. He expressed deep affection for her, wanting to marry her and declaring, "I'm tired of dating, this girl is the one."
+
+I still went to my friend for advice. He told me to relax, that it would get better when I got back, and to concentrate on my work. I was naive.
+
+It wasn't working. She said she couldn't handle me being away all the time, five days at a time. I drove five hours home every weekend and five hours back to work. She said she was "seeing somebody else to stay happy." Okay, go hang out with somebody else. You're still mine. I asked my best friend about it, and he said, "No way, man, she isn't. She can't give you a name, therefore she isn't. She's just messing with you, stay strong."
+
+Fast forward. I got back, and I dealt with her completely unhinged attitude for a couple of weeks. She started to like me again. I was trying to do the right thing. I felt bad for leaving her, even though it wasn't that long.
+
+There was no hack. There was no explanation. My best friend lied to my face. He was the "guy she was seeing," and he was doing loads of drugs. My best friend lied to my girlfriend and me to get her upset and dislike me so he could party with her, all while telling me he wanted to marry his current girlfriend and blaming all of my issues on one of his exes. His lies went on for weeks. I was upset, but he was still my best friend.
+
+I found out the truth. "I'm sorry, man, I'm trying to keep my distance from your girlfriend now. Feelings got in the way two weeks ago," but nothing happened, he claimed. "By the way, she cheated on you right before your birthday." This is where I should have cut it off. But I was naive. I replied, "No, I'm trying to do the right thing. I love this girl, and I feel bad for how messed up she is, and everything else." (She was a dropout, no job, hurting, but could definitely climb out if she tried.) Him: "How do you do it, man? How do you stay strong?" He asked this a lot. I always explained I wanted to do the right thing and that I loved this girl. I was stupid. 
+
+I tried to spend as much time with her as possible, while my best friend still talked about how he wanted to marry his girlfriend and how he told her everything that happened between him and my girlfriend. He wanted both of our lives to go back to normal, he said.
+
+A few weeks later, things were still rough and she was treating me poorly, but it was slowly getting better. I was being honest about everything, and she claimed she was too, until she finally broke down and admitted that "seeing him" meant they were sleeping together the whole time I was away. He was lying to my face saying he wanted to marry his girlfriend. He was cheating on his girlfriend with mine, and both of them were lying to me the entire time. After I left town for two weeks feeling broken and distant, we fought because she had been with him behind my back since the very beginning, even while I was home.
+
+He was my best friend, he said he wanted to help me, and he always offered help. He used everything I ever told him in confidence, while asking me for relationship advice, to turn her against me for months. All of the advice he gave me was designed to get her to dislike me more. "Make dinner for her, man, I'll give you a recipe for an awesome meat sauce, do it with a red wine." She hated meat sauce and red wine. He was with her and loading her up with free drugs after I had spent a year with her, all while lying to my face. He looked into my eyes and told me how bad he felt and told me how to fix it. They both lied to me.
+
+Now they are both addicted to drugs, my ex is massively in debt, lives at home with her parents, and both work dead-end retail jobs. I got a $4,000 bonus check after my 6 weeks out of town. I'm still angry about it. My heart is pounding right now. I've lost a lot of faith in humanity and my once unconditional trust that people wanted to be good. Don't date a girl who is so insecure that she needs the attention of other guys at parties to be happy, but freaks out when you so much as glance at another girl, even if she is an old lady taking your order at a restaurant.
+
+---
+In grade 11, I met my first girlfriend. We were really great together. Even though I had to drive 45 minutes to meet her, I always looked forward to hanging out with her because she was awesome.
+
+About 4 months into the relationship, however, my best friend started talking to my girlfriend. I didn't see anything wrong with it because I trusted him and her. Big mistake. One night, my girlfriend sent me an IM: "How could you do this to me?" My heart sank immediately. I had no idea what she was talking about. I kept asking what I did, but she kept saying I was just playing dumb. I called her on the phone to talk to her. She said that my best friend had told her that I had been flirting with another girl at my school.
+
+No matter how hard I tried, I couldn't convince her otherwise. She broke up with me. About a month later, I went into the town where she lived. A friend and I were going to hang out with some mutual friends of my ex. We went to their house, and who was there but my best friend and my ex, with her sitting on my best friend's lap. Apparently, my "best friend" had asked her out a bit after she broke up with me, and she had said yes. She trusted him because he had told her those lies about me. To this day, this is the biggest betrayal I have ever felt.
 
 
 

@@ -1,6 +1,7 @@
 import asyncio
 import re
 import os
+import keys
 import numpy as np
 import textwrap
 from moviepy import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip, ColorClip
@@ -576,6 +577,7 @@ async def main():
 
     texto = (
        """ 
+
 
 
 Mi amigo salía con una chica a la que, según me daba cuenta, simplemente no le caía bien, pero al menos éramos cordiales el uno con el otro, hasta el viaje de campamento del fin de semana festivo del 24 de mayo. Ella se empeñó en mantener nuestro alcohol separado, lo cual estaba bien. Yo tenía mi cerveza, ellos tenían sus limonadas con alcohol, así que bien. Luego me levanté temprano en la primera mañana e hice panqueques para todos, ¿por qué? Porque así es como soy. Cuando los campistas salieron de sus tiendas de campaña atraídos por el olor a panqueques de manzana y canela y café de fogata, ella fue la única que perdió los estribos. Yo había abierto su nevera portátil y usado su margarina. Mi amigo solo pareció apenado y trató de mantener la paz mientras yo le lanzaba una moneda de dos dólares y me disculpaba. Su reacción fue sacar un candado de su bolso de gimnasio y cerrar "su tienda de campaña" con "su alcohol" y "su comida". Más tarde, él se me acercó y me preguntó si le podía prestar el auto, para que pudieran ir rápido al pueblo, comprar unas cosas y hablar sobre ser un poco más tolerantes con los demás campistas. Le dije que estaba bien y le entregué las llaves. Cuando regresaron horas después, el tanque estaba vacío y la cocina de campaña (una caja de madera con correas llamada wannigan con platos, cubiertos, ollas y sartenes, etc.) había desaparecido de la parte trasera de la camioneta. Buscamos por el campamento, nada. Era de mi padre y había pasado de generación en generación en la familia. Fui conduciendo para llenar el tanque y comprar un envase nuevo de margarina, y estaba a la mitad del camino rural cuando vi el wannigan a un lado de la carretera, destrozado en la zanja. Había marcas a lo largo de los paneles traseros junto a los asientos abatidos donde uno de ellos claramente lo había empujado hacia afuera por la parte trasera del auto en movimiento.
